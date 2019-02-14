@@ -26,15 +26,16 @@ docker-compose up
 
 ## URLs
 
-Then to access kibana and droppy, access the following URLS.  They are load balances and sent to the appropriate microservice through docker.
+Then to access kibana and droppy, access the following URLS.  They are load balanced and sent to the appropriate microservice through docker and traefik.
 
+BASE_URL by default is localhost.
 * droppy.BASE_URL - Access online file browser
 * kibana.BASE_URL - Access kibana
 
 
 ## Method
 
-I had to set up the stack to use the sof-ELK configure properly.  It does not have every feature in sof-elk (default dashboards)...yet!
+I had to set up the stack to use the sof-ELK configure properly.  It does not have every feature in sof-elk (like the included dashboards)...yet!
 
 I basically went to each of these files in the VM
 ```
