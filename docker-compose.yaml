@@ -1,0 +1,158 @@
+version: '3.5'
+
+services:
+
+    # Used as load balancer and frontend domain parser
+    traefik:
+        image: traefik # The official Traefik docker image
+        command: --api --docker # Enables the web UI and tells Traefik to listen to docker
+        ports:
+            - "80:80"     # The HTTP port
+            - "443:443"     # The HTTPS port
+            - "8080:8080" # The Web UI (enabled by --api)
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - ./traefik/${TRAEFIK_CONFIG:-traefik_dev.toml}:/traefik.toml
+            - ./traefik/acme.json:/acme.json
+        networks:
+            - master
+
+    # portainer:
+    #     image: portainer/portainer
+    #     ports:
+    #         - 9000
+    #     command: -H unix:///var/run/docker.sock
+    #     volumes:
+    #         - /var/run/docker.sock:/var/run/docker.sock
+    #         - ./portainer-data:/data
+    #     networks:
+    #         - master
+    #     labels:
+    #         - "traefik.backend=portainer"
+    #         - "traefik.docker.network=${network_name:-masternetwork}"
+    #         - "traefik.frontend.rule=Host:portainer.${BASE_URL:-localhost}" # add another rule with ";Host:host"
+    #         - "traefik.enable=true"
+    #         - "traefik.port=9000"
+
+    # ELK
+    elasticsearch:
+        image: library/elasticsearch:6.5.0
+        volumes:
+            # for persistent data
+            - ./elasticsearch-data:/usr/share/elasticsearch/data
+            - ./elk_config/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+            - ./sof-elk:/usr/local/sof-elk
+        ports:
+            - 9200:9200
+            - 9300
+        environment:
+            ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+        networks:
+            - master
+        deploy:
+            restart_policy:
+                condition: on-failure
+            resources:
+                limits:
+                    memory: 1G
+
+    logstash:
+        image: library/logstash:6.5.0
+        volumes:
+            - ./elk_config/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+            - ./sof-elk:/usr/local/sof-elk
+            - ./resources/GeoIP:/usr/local/share/GeoIP
+        ports:
+            - 5000/udp
+            - 5044
+        networks:
+            - master
+        depends_on:
+            - elasticsearch
+        restart: on-failure
+        deploy:
+            restart_policy:
+                condition: on-failure
+        # command: "--debug"
+        command: "bash -c 'logstash-plugin install logstash-input-relp logstash-filter-tld logstash-filter-rest && /usr/local/bin/docker-entrypoint'"
+
+    # Takes logs from each microservice and pipes into logstash
+    logspout:
+        image: bekt/logspout-logstash
+        environment:
+            ROUTE_URIS: 'logstash://logstash:5000'
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+        depends_on:
+            - logstash
+            - elasticsearch
+        deploy:
+            restart_policy:
+                condition: any
+                delay: 10s
+        networks:
+            - master
+        restart: on-failure
+
+    kibana:
+        image: library/kibana:6.5.0
+        volumes:
+            - ./elk_config/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+            - ./sof-elk:/usr/local/sof-elk
+        ports:
+            - 5601
+        networks:
+            - master
+        depends_on:
+            - elasticsearch
+        deploy:
+                restart_policy:
+                        condition: on-failure
+        labels:
+            - "traefik.backend=kibana"
+            - "traefik.docker.network=${network_name:-masternetwork}"
+            - "traefik.frontend.rule=Host:kibana.${BASE_URL:-localhost}" # add another rule with ";Host:host"
+            - "traefik.enable=true"
+            - "traefik.port=5601"
+    
+    filebeat:
+        image: elastic/filebeat:6.5.0
+        networks:
+            - master
+        volumes:
+            - ./elk_config/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+            - ./sof-elk:/usr/local/sof-elk
+            - ./filebeat-data:/use/share/filebeat/data # persistent data storage, may remove, doesn't seem to be used
+            - ./server-files:/logstash # for actual file processing
+        environment:
+            - ELASTICSEARCH_HOST=elasticsearch
+            - KIBANA_HOST=kibana
+            - LOGSTASH_HOST=logstash
+        restart: on-failure
+    
+    # https://github.com/silverwind/droppy
+    # Used to drop files that can be immediately picked up by filebeat and sent to logstash
+    droppy:
+        image: silverwind/droppy
+        ports:
+            - 8989
+        volumes:
+            # - ./config:./config
+            - ./server-files:/files
+        restart: unless-stopped
+        networks:
+            - master
+        labels:
+            - "traefik.backend=droppy"
+            - "traefik.docker.network=${network_name:-masternetwork}"
+            - "traefik.frontend.rule=Host:droppy.${BASE_URL:-localhost}" # add another rule with ";Host:host"
+            - "traefik.enable=true"
+            - "traefik.port=8989"
+        
+
+networks:
+    # Network mostly needed for swarm
+    # Set to bridge to test locally and have ports be outside accessible
+    master:
+        name: "${network_name:-masternetwork}"
+        driver: overlay

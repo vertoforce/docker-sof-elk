@@ -1,0 +1,19 @@
+# https://github.com/elastic/beats/blob/master/filebeat/filebeat.reference.yml
+
+filebeat.config_dir: /usr/local/sof-elk/lib/filebeat_inputs
+
+#========================== Elasticsearch output ===============================
+output.logstash:
+  hosts: ["${LOGSTASH_HOST}:5044"]
+
+#============================== Dashboards =====================================
+# setup.dashboards:
+#   enabled: true
+
+#============================== Kibana =========================================
+#   host: "${KIBANA_HOST}:5601"
+
+#============================== Xpack Monitoring ===============================
+# xpack.monitoring:
+#   enabled: true
+#   elasticsearch:

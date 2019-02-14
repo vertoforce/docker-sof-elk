@@ -1,0 +1,4 @@
+traefik/acme.json
+elasticsearch-data
+filebeat-data
+resources/GeoIP
