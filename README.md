@@ -24,6 +24,8 @@ chmod 777 elasticsearch-data filebeat-data
 docker-compose up
 ```
 
+**Note** that the stack will take a few minutes to come online depending on your hardware.  A few microservices will fail to start and restart until elasticsearch and logstash finish initalizing.
+
 ## URLs
 
 Then to access kibana and droppy, access the following URLS.  They are load balanced and sent to the appropriate microservice through docker and traefik.
