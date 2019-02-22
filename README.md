@@ -58,6 +58,7 @@ The following steps were taken to set up sof-elk from the sof-elk config repo
 * Copied `sof-elk/conffiles` to `sof-elk/conffiles`
 * Copied `sof-elk/grok-patterns` to `sof-elk/grok-patterns`
 * Copied `sof-elk/supporting-scripts` to `sof-elk/supporting-scrips`
+* Copied `sof-elk/dashboards` to `sof-elk/dashboards`
 * Copied `lsplugins` from `sof-elk/supporting-scripts/ls_plugin_update.sh` to the plugin install command in the docker-compose.yaml for logstash
 * Added `logspout.conf` to `sof-elk/conffiles` for logspout
 * Changed all `sof-elk/conffiles/*output*` to contain this output line (for correct elasticsearch host)
