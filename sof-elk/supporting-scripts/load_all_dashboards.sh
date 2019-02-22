@@ -8,16 +8,18 @@
 
 ARGC=$#
 
-es_host=localhost
+es_host=elasticsearch
 es_port=9200
-kibana_host=localhost
+kibana_host=kibana
 kibana_port=5601
 kibana_index=.kibana
 
-kibana_version=$( jq -r '.version' < /usr/share/kibana/package.json )
-kibana_build=$(jq -r '.build.number' < /usr/share/kibana/package.json )
+kibana_version=${ES_VERSION:-6.5.0}
+kibana_build=${ES_VERSION:-6.5.0}
 
-dashboard_dir="/usr/local/sof-elk/dashboards/"
+#sofelk_dir="/usr/local/sof-elk"
+sofelk_dir=$(pwd)/sof-elk
+dashboard_dir=${sofelk_dir}/dashboards
 
 # enter a holding pattern until the elasticsearch server is available, but don't wait too long
 max_wait=60
@@ -35,8 +37,8 @@ done
 # re-insert all ES templates in case anything has changed
 # this will not change existing mappings, just new indexes as they are created
 # (And why-oh-why isn't this handled by "template_overwrite = true" in the logstash output section?!?!?!?!)
-for es_template in $( ls -1 /usr/local/sof-elk/lib/elasticsearch-*-template.json | sed 's/.*elasticsearch-\(.*\)-template.json/\1/' ); do
-    curl -s -XPUT -H 'Content-Type: application/json' http://${es_host}:${es_port}/_template/${es_template} -d @/usr/local/sof-elk/lib/elasticsearch-${es_template}-template.json > /dev/null
+for es_template in $( ls -1 ${sofelk_dir}/lib/elasticsearch-*-template.json | sed 's/.*elasticsearch-\(.*\)-template.json/\1/' ); do
+    curl -s -XPUT -H 'Content-Type: application/json' http://${es_host}:${es_port}/_template/${es_template} -d @${sofelk_dir}/lib/elasticsearch-${es_template}-template.json > /dev/null
 done
 
 # set the default index pattern, time zone, and add TZ offset to the default date format 
