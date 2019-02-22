@@ -34,6 +34,12 @@ BASE_URL by default is localhost.
 * droppy.BASE_URL - Access online file browser
 * kibana.BASE_URL - Access kibana
 
+## Data streams
+
+If you want to add data streams into logstash, you simply need to open the ports to the logstash microservice.
+Namely in `docker-compose.yaml` add ports to the `ports` section for the streams you want to allow in.
+All the streams that are available are defined in the `sof-elk/configfiles/*-input-*` files.
+
 
 ## Method
 
