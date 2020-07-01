@@ -4,7 +4,7 @@ services:
 
     # Used as load balancer and frontend domain parser
     traefik:
-        image: traefik # The official Traefik docker image
+        image: traefik:1.7 # The official Traefik docker image
         command: --api --docker # Enables the web UI and tells Traefik to listen to docker
         ports:
             - "80:80"     # The HTTP port
@@ -16,23 +16,6 @@ services:
             - ./traefik/acme.json:/acme.json
         networks:
             - master
-
-    # portainer:
-    #     image: portainer/portainer
-    #     ports:
-    #         - 9000
-    #     command: -H unix:///var/run/docker.sock
-    #     volumes:
-    #         - /var/run/docker.sock:/var/run/docker.sock
-    #         - ./portainer-data:/data
-    #     networks:
-    #         - master
-    #     labels:
-    #         - "traefik.backend=portainer"
-    #         - "traefik.docker.network=${network_name:-masternetwork}"
-    #         - "traefik.frontend.rule=Host:portainer.${BASE_URL:-localhost}" # add another rule with ";Host:host"
-    #         - "traefik.enable=true"
-    #         - "traefik.port=9000"
 
     # ELK
     elasticsearch:
