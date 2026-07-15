@@ -1,15 +1,23 @@
-debug = false
+# Traefik v3 static configuration (local/dev: HTTP only, no TLS).
+# Routers/services are declared as Docker labels in docker-compose.yaml; with a
+# single "web" entrypoint here, every enabled router is served over plain HTTP.
 
-logLevel = "ERROR"
-defaultEntryPoints = ["http"]
+[global]
+  checkNewVersion = false
+  sendAnonymousUsage = false
+
+[log]
+  level = "ERROR"
+
+[api]
+  dashboard = true
+  insecure = true
 
 [entryPoints]
-  [entryPoints.http]
-  address = ":80"
+  [entryPoints.web]
+    address = ":80"
 
-[retry]
-
-[docker]
-endpoint = "unix:///var/run/docker.sock"
-watch = true
-exposedByDefault = false
+[providers.docker]
+  endpoint = "unix:///var/run/docker.sock"
+  exposedByDefault = false
+  watch = true
