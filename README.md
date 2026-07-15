@@ -9,7 +9,56 @@ I decided to make Sof-ELK in a dockerized deployment stack to make it:
 * Easy to add additional services such as file managers to uploads logs to
 * Easier to manage persistent data
 
+## Stack versions
+
+All internet-pulled images are pinned by tag **and** digest (see `docker-compose.yaml`):
+
+| Component | Version | Image |
+|-----------|---------|-------|
+| Elasticsearch | 9.4.3 | `docker.elastic.co/elasticsearch/elasticsearch` |
+| Kibana | 9.4.3 | `docker.elastic.co/kibana/kibana` |
+| Logstash | 9.4.3 | `docker.elastic.co/logstash/logstash` |
+| Filebeat | 9.4.3 | `docker.elastic.co/beats/filebeat` |
+| Traefik | 3.7.7 | `traefik` |
+| droppy | 12.2.0 | `silverwind/droppy` |
+| logspout | pinned digest | `bekt/logspout-logstash` (see caveat below) |
+
+To bump a version: pull the new tag, re-resolve the digest with
+`docker buildx imagetools inspect <ref> --format '{{.Manifest.Digest}}'`, then
+update the `image:` line and its `# pinned` comment.
+
+### Security note
+
+Elasticsearch has security **on by default** since 8.x. This lab intentionally
+disables it (`xpack.security.enabled: false` in
+`elk_config/elasticsearch/elasticsearch.yml`) to keep the original no-auth
+posture — every service here talks plain HTTP to `elasticsearch:9200` with no
+credentials. **Do not expose this to an untrusted network as-is.** To
+productionize, enable security, generate credentials, and add
+username/password + TLS to the Kibana, Logstash, and logspout Elasticsearch
+connections.
+
+### logspout caveat
+
+`bekt/logspout-logstash` is unmaintained (last published 2019, no semver tags —
+only `latest`/`master`). It is pinned by digest so builds stay reproducible, but
+before relying on it consider a maintained alternative such as
+[`gliderlabs/logspout`](https://github.com/gliderlabs/logspout) built with a
+Logstash/GELF adapter, or shipping container logs via Filebeat's Docker input.
+
 # Usage
+
+## Prerequisites
+
+Elasticsearch 9.x requires the host kernel setting `vm.max_map_count >= 262144`:
+
+```sh
+sudo sysctl -w vm.max_map_count=262144   # add to /etc/sysctl.conf to persist
+```
+
+The compose `networks.master` uses the `overlay` driver (Swarm). To run with a
+plain `docker compose up` on a single host, either `docker swarm init` first, or
+change the network `driver` to `bridge`.
 
 ## Run the stack
 
@@ -18,7 +67,7 @@ I decided to make Sof-ELK in a dockerized deployment stack to make it:
 mkdir elasticsearch-data filebeat-data
 chmod 777 elasticsearch-data filebeat-data
 # Bring up the stack
-docker-compose up
+docker compose up
 ```
 
 **Note** that the stack will take a few minutes to come online depending on your hardware.  A few microservices will fail to start and restart until elasticsearch and logstash finish initializing.
