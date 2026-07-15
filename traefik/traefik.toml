@@ -1,31 +1,42 @@
-debug = false
+# Traefik v3 static configuration (production: HTTP + HTTPS w/ Let's Encrypt).
+# Migrated from the v1 schema. Routers/services are declared as Docker labels
+# on each service in docker-compose.yaml.
 
-logLevel = "ERROR"
-defaultEntryPoints = ["https","http"]
+[global]
+  checkNewVersion = false
+  sendAnonymousUsage = false
+
+[log]
+  level = "ERROR"
+
+# Dashboard on :8080. insecure = true keeps the old "--api" behavior; put it
+# behind auth or drop the 8080 port mapping for a real deployment.
+[api]
+  dashboard = true
+  insecure = true
 
 [entryPoints]
-  [entryPoints.http]
-  address = ":80"
-    [entryPoints.http.redirect]
-    entryPoint = "https"
-  [entryPoints.https]
-  address = ":443"
-  [entryPoints.https.tls]
+  [entryPoints.web]
+    address = ":80"
+    # Redirect all plain HTTP to HTTPS (the ACME HTTP-01 challenge handler still
+    # takes precedence on :80, so cert issuance is unaffected).
+    [entryPoints.web.http.redirections.entryPoint]
+      to = "websecure"
+      scheme = "https"
+  [entryPoints.websecure]
+    address = ":443"
+    # Default TLS for every router bound to this entrypoint, so per-service
+    # labels don't need to repeat tls/certresolver.
+    [entryPoints.websecure.http.tls]
+      certResolver = "letsencrypt"
 
-[retry]
+[providers.docker]
+  endpoint = "unix:///var/run/docker.sock"
+  exposedByDefault = false
+  watch = true
 
-[docker]
-endpoint = "unix:///var/run/docker.sock"
-watch = true
-exposedByDefault = false
-
-[acme]
-email = "connor@stackendsolutions.com"
-storage = "acme.json"
-entryPoint = "https"
-onHostRule = true
-[acme.httpChallenge]
-entryPoint = "http"
-[[acme.domains]]
-main="sof-elk.stackendsolutions.com"
-subs=["droppy.sof-elk.stackendsolutions.com"]
+[certificatesResolvers.letsencrypt.acme]
+  email = "connor@stackendsolutions.com"
+  storage = "acme.json"
+  [certificatesResolvers.letsencrypt.acme.httpChallenge]
+    entryPoint = "web"
