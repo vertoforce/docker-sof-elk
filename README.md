@@ -46,6 +46,33 @@ before relying on it consider a maintained alternative such as
 [`gliderlabs/logspout`](https://github.com/gliderlabs/logspout) built with a
 Logstash/GELF adapter, or shipping container logs via Filebeat's Docker input.
 
+## Known migration gaps (need live validation)
+
+The container images and the ELK service settings are modernized to 9.4.3, and
+Elasticsearch/Kibana come up clean. The **vendored 2020 SOF-ELK snapshot** under
+`sof-elk/` still carries 6.x-era artifacts that a live ingest will trip over.
+Observed during smoke testing on Elasticsearch 9.4.3:
+
+- **Logstash pipeline loads, templates do not.** All `sof-elk/configfiles/*.conf`
+  parse and the pipeline reaches "Pipeline started" on Logstash 9.4. But the ES
+  index templates in `sof-elk/lib/elasticsearch-*-template.json` are the legacy
+  `_template` (v6) format; Logstash's ES output posts them to the composable
+  `_index_template` API, which rejects them with
+  `x_content_parse_exception: unknown field [settings]`. The templates need to
+  be wrapped/migrated to the composable schema (top-level `settings`/`mappings`
+  moved under a `template` object), or converted to component templates.
+- **Filebeat input files are pre-7.0.** `sof-elk/lib/filebeat_inputs/*.yml` use
+  `filebeat.prospectors` and `type: log`, both removed in 8.x. They must move to
+  `filebeat.inputs` with the `filestream` input type. (The top-level
+  `filebeat.config_dir` removal is already handled in
+  `elk_config/filebeat/filebeat.yml`.)
+- **Grok patterns / field mappings** from the 2020 snapshot have not been
+  re-validated against current parsers and should be checked against upstream
+  https://github.com/philhagen/sof-elk with real sample data.
+
+None of the above was fully validated end-to-end here (no representative sample
+data was ingested).
+
 # Usage
 
 ## Prerequisites
