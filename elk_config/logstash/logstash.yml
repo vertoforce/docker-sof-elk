@@ -1,6 +1,7 @@
 ---
-## Default Logstash configuration from logstash-docker.
-## from https://github.com/elastic/logstash-docker/blob/master/build/logstash/config/logstash-oss.yml
+## Logstash 9.x configuration for the SOF-ELK lab stack.
 #
-http.host: "0.0.0.0"
+## `http.host` / `http.port` were renamed to `api.http.host` / `api.http.port`
+## in Logstash 8.x (the old keys still work but are deprecated).
+api.http.host: "0.0.0.0"
 path.config: /usr/local/sof-elk/configfiles

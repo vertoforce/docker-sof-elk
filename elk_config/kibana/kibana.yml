@@ -1,7 +1,10 @@
 ---
-## Default Kibana configuration from kibana-docker.
-## from https://github.com/elastic/kibana-docker/blob/master/build/kibana/config/kibana.yml
+## Kibana 9.x configuration for the SOF-ELK lab stack.
 #
 server.name: kibana
 server.host: "0"
-elasticsearch.url: http://elasticsearch:9200
+
+## `elasticsearch.url` (a single string) was removed in 7.x in favour of
+## `elasticsearch.hosts` (a list). Elasticsearch security is disabled in
+## elasticsearch.yml, so no username/password/TLS is needed here.
+elasticsearch.hosts: ["http://elasticsearch:9200"]

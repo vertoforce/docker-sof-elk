@@ -1,15 +1,18 @@
-version: '3.5'
+# SOF-ELK dockerized stack.
+# Images are pinned by tag + digest (immutable). Bump = pull new tag, re-resolve
+# digest with `docker buildx imagetools inspect <ref>`, update line + comment.
+# ELK line: 9.4.3 (Elasticsearch / Kibana / Logstash / Filebeat kept in lockstep).
 
 services:
 
     # Used as load balancer and frontend domain parser
     traefik:
-        image: traefik:1.7 # The official Traefik docker image
-        command: --api --docker # Enables the web UI and tells Traefik to listen to docker
+        image: traefik:3.7.7@sha256:1cb3845d7a05e1473c9086351426597e911db49db382b6e4769f9b0744962ac8 # pinned 2026-07-14
+        command: --configFile=/traefik.toml
         ports:
             - "80:80"     # The HTTP port
-            - "443:443"     # The HTTPS port
-            - "8080:8080" # The Web UI (enabled by --api)
+            - "443:443"   # The HTTPS port
+            - "8080:8080" # The Web UI (enabled by api.insecure in traefik.toml)
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock
             - ./traefik/${TRAEFIK_CONFIG:-traefik_dev.toml}:/traefik.toml
@@ -19,7 +22,7 @@ services:
 
     # ELK
     elasticsearch:
-        image: library/elasticsearch:6.5.0
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.3@sha256:851ff5f9615ab7d2f00931114f6db32850f0208ec9fe7e841f135ac78f5f13d5 # pinned 2026-07-14
         volumes:
             # for persistent data
             - ./elasticsearch-data:/usr/share/elasticsearch/data
@@ -29,7 +32,8 @@ services:
             - 9200:9200
             - 9300
         environment:
-            ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+            # ES 9 needs a real heap; 256m from the 6.x era will not bootstrap.
+            ES_JAVA_OPTS: "-Xms1g -Xmx1g"
         networks:
             - master
         deploy:
@@ -37,10 +41,11 @@ services:
                 condition: on-failure
             resources:
                 limits:
-                    memory: 1G
+                    # heap (1g) + off-heap overhead; 1G from the 6.x era OOMs on 9.x.
+                    memory: 2G
 
     logstash:
-        image: library/logstash:6.5.0
+        image: docker.elastic.co/logstash/logstash:9.4.3@sha256:03d605e3938504512a584b0d1209cf5768fdbaacb43b910a09c640bf7565fb12 # pinned 2026-07-14
         volumes:
             - ./elk_config/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
             - ./sof-elk:/usr/local/sof-elk
@@ -60,8 +65,11 @@ services:
         command: "bash -c 'logstash-plugin install logstash-input-relp logstash-filter-tld logstash-filter-rest && /usr/local/bin/docker-entrypoint'"
 
     # Takes logs from each microservice and pipes into logstash
+    # NOTE: bekt/logspout-logstash is unmaintained (last push 2019-06, no semver
+    # tags). Pinned by digest to satisfy the pinning invariant. See README for a
+    # maintained alternative before relying on this in production.
     logspout:
-        image: bekt/logspout-logstash
+        image: bekt/logspout-logstash:latest@sha256:cbe0bd04dc3e65300337c0011ad4322bb476931077e3425d34373730bbbfa59f # pinned 2026-07-14 (unmaintained upstream)
         environment:
             ROUTE_URIS: 'logstash://logstash:5000'
         volumes:
@@ -78,7 +86,7 @@ services:
         restart: on-failure
 
     kibana:
-        image: library/kibana:6.5.0
+        image: docker.elastic.co/kibana/kibana:9.4.3@sha256:85e993bf4519827c84faa8a65265028d7ea572385f07ce8d913ad03025327ed7 # pinned 2026-07-14
         volumes:
             - ./elk_config/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
             - ./sof-elk:/usr/local/sof-elk
@@ -92,14 +100,17 @@ services:
                 restart_policy:
                         condition: on-failure
         labels:
-            - "traefik.backend=kibana"
-            - "traefik.docker.network=${network_name:-masternetwork}"
-            - "traefik.frontend.rule=Host:kibana.${BASE_URL:-localhost}" # add another rule with ";Host:host"
+            # Traefik v3 dynamic-config labels (router + service model).
+            # No entrypoints/tls set here: the router binds all entrypoints, and
+            # TLS+certresolver default is applied at the websecure entrypoint in
+            # traefik.toml, so the same labels work for dev (http) and prod (https).
             - "traefik.enable=true"
-            - "traefik.port=5601"
-    
+            - "traefik.docker.network=${network_name:-masternetwork}"
+            - "traefik.http.routers.kibana.rule=Host(`kibana.${BASE_URL:-localhost}`)"
+            - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+
     filebeat:
-        image: elastic/filebeat:6.5.0
+        image: docker.elastic.co/beats/filebeat:9.4.3@sha256:61bf789ac881c88c0edee6d490434e7a6d464d5f46a2bb1f5540a2301d4bdec3 # pinned 2026-07-14
         networks:
             - master
         volumes:
@@ -112,11 +123,11 @@ services:
             - KIBANA_HOST=kibana
             - LOGSTASH_HOST=logstash
         restart: on-failure
-    
+
     # https://github.com/silverwind/droppy
     # Used to drop files that can be immediately picked up by filebeat and sent to logstash
     droppy:
-        image: silverwind/droppy
+        image: silverwind/droppy:12.2.0@sha256:05aea9527d84d6261075cafe6e4d5c4e576a3911202ec85ab2333b6ea6d5e9a3 # pinned 2026-07-14
         ports:
             - 8989
         volumes:
@@ -126,12 +137,11 @@ services:
         networks:
             - master
         labels:
-            - "traefik.backend=droppy"
-            - "traefik.docker.network=${network_name:-masternetwork}"
-            - "traefik.frontend.rule=Host:droppy.${BASE_URL:-localhost}" # add another rule with ";Host:host"
             - "traefik.enable=true"
-            - "traefik.port=8989"
-        
+            - "traefik.docker.network=${network_name:-masternetwork}"
+            - "traefik.http.routers.droppy.rule=Host(`droppy.${BASE_URL:-localhost}`)"
+            - "traefik.http.services.droppy.loadbalancer.server.port=8989"
+
 
 networks:
     # Network mostly needed for swarm
