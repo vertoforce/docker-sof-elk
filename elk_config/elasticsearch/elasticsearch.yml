@@ -1,16 +1,20 @@
 ---
-## Default Elasticsearch configuration from elasticsearch-docker.
-## from https://github.com/elastic/elasticsearch-docker/blob/master/build/elasticsearch/elasticsearch.yml
+## Elasticsearch 9.x configuration for the SOF-ELK lab stack.
 #
 cluster.name: "docker-cluster"
 network.host: 0.0.0.0
 
-# minimum_master_nodes need to be explicitly set when bound on a public IP
-# set to 1 to allow single node clusters
-# Details: https://github.com/elastic/elasticsearch/pull/17288
-discovery.zen.minimum_master_nodes: 1
-
-## Use single node discovery in order to disable production mode and avoid bootstrap checks
-## see https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
-#
+## Single-node discovery disables production mode / bootstrap checks.
+## (discovery.zen.minimum_master_nodes was removed in Elasticsearch 7.x — the
+## Zen2 coordination layer replaced it and it is no longer a valid setting.)
 discovery.type: single-node
+
+## Security is ON by default starting in Elasticsearch 8.x. This lab historically
+## ran with no authentication (the 6.x images had none), and every downstream
+## connection here (Kibana, Logstash, logspout) talks plain HTTP with no creds.
+## Disable the built-in security stack to preserve that posture.
+## To productionize: set these to true, generate credentials / an enrollment
+## token, and add xpack.security.http.ssl + users to Kibana/Logstash outputs.
+xpack.security.enabled: false
+xpack.security.http.ssl.enabled: false
+xpack.security.transport.ssl.enabled: false

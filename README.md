@@ -9,7 +9,83 @@ I decided to make Sof-ELK in a dockerized deployment stack to make it:
 * Easy to add additional services such as file managers to uploads logs to
 * Easier to manage persistent data
 
+## Stack versions
+
+All internet-pulled images are pinned by tag **and** digest (see `docker-compose.yaml`):
+
+| Component | Version | Image |
+|-----------|---------|-------|
+| Elasticsearch | 9.4.3 | `docker.elastic.co/elasticsearch/elasticsearch` |
+| Kibana | 9.4.3 | `docker.elastic.co/kibana/kibana` |
+| Logstash | 9.4.3 | `docker.elastic.co/logstash/logstash` |
+| Filebeat | 9.4.3 | `docker.elastic.co/beats/filebeat` |
+| Traefik | 3.7.7 | `traefik` |
+| droppy | 12.2.0 | `silverwind/droppy` |
+| logspout | pinned digest | `bekt/logspout-logstash` (see caveat below) |
+
+To bump a version: pull the new tag, re-resolve the digest with
+`docker buildx imagetools inspect <ref> --format '{{.Manifest.Digest}}'`, then
+update the `image:` line and its `# pinned` comment.
+
+### Security note
+
+Elasticsearch has security **on by default** since 8.x. This lab intentionally
+disables it (`xpack.security.enabled: false` in
+`elk_config/elasticsearch/elasticsearch.yml`) to keep the original no-auth
+posture — every service here talks plain HTTP to `elasticsearch:9200` with no
+credentials. **Do not expose this to an untrusted network as-is.** To
+productionize, enable security, generate credentials, and add
+username/password + TLS to the Kibana, Logstash, and logspout Elasticsearch
+connections.
+
+### logspout caveat
+
+`bekt/logspout-logstash` is unmaintained (last published 2019, no semver tags —
+only `latest`/`master`). It is pinned by digest so builds stay reproducible, but
+before relying on it consider a maintained alternative such as
+[`gliderlabs/logspout`](https://github.com/gliderlabs/logspout) built with a
+Logstash/GELF adapter, or shipping container logs via Filebeat's Docker input.
+
+## Known migration gaps (need live validation)
+
+The container images and the ELK service settings are modernized to 9.4.3, and
+Elasticsearch/Kibana come up clean. The **vendored 2020 SOF-ELK snapshot** under
+`sof-elk/` still carries 6.x-era artifacts that a live ingest will trip over.
+Observed during smoke testing on Elasticsearch 9.4.3:
+
+- **Logstash pipeline loads, templates do not.** All `sof-elk/configfiles/*.conf`
+  parse and the pipeline reaches "Pipeline started" on Logstash 9.4. But the ES
+  index templates in `sof-elk/lib/elasticsearch-*-template.json` are the legacy
+  `_template` (v6) format; Logstash's ES output posts them to the composable
+  `_index_template` API, which rejects them with
+  `x_content_parse_exception: unknown field [settings]`. The templates need to
+  be wrapped/migrated to the composable schema (top-level `settings`/`mappings`
+  moved under a `template` object), or converted to component templates.
+- **Filebeat input files are pre-7.0.** `sof-elk/lib/filebeat_inputs/*.yml` use
+  `filebeat.prospectors` and `type: log`, both removed in 8.x. They must move to
+  `filebeat.inputs` with the `filestream` input type. (The top-level
+  `filebeat.config_dir` removal is already handled in
+  `elk_config/filebeat/filebeat.yml`.)
+- **Grok patterns / field mappings** from the 2020 snapshot have not been
+  re-validated against current parsers and should be checked against upstream
+  https://github.com/philhagen/sof-elk with real sample data.
+
+None of the above was fully validated end-to-end here (no representative sample
+data was ingested).
+
 # Usage
+
+## Prerequisites
+
+Elasticsearch 9.x requires the host kernel setting `vm.max_map_count >= 262144`:
+
+```sh
+sudo sysctl -w vm.max_map_count=262144   # add to /etc/sysctl.conf to persist
+```
+
+The compose `networks.master` uses the `overlay` driver (Swarm). To run with a
+plain `docker compose up` on a single host, either `docker swarm init` first, or
+change the network `driver` to `bridge`.
 
 ## Run the stack
 
@@ -18,7 +94,7 @@ I decided to make Sof-ELK in a dockerized deployment stack to make it:
 mkdir elasticsearch-data filebeat-data
 chmod 777 elasticsearch-data filebeat-data
 # Bring up the stack
-docker-compose up
+docker compose up
 ```
 
 **Note** that the stack will take a few minutes to come online depending on your hardware.  A few microservices will fail to start and restart until elasticsearch and logstash finish initializing.
