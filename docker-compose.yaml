@@ -27,13 +27,12 @@ services:
             # for persistent data
             - ./elasticsearch-data:/usr/share/elasticsearch/data
             - ./elk_config/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
-            - ./sof-elk:/usr/local/sof-elk
         ports:
             - 9200:9200
             - 9300
         environment:
             # ES 9 needs a real heap; 256m from the 6.x era will not bootstrap.
-            ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+            ES_JAVA_OPTS: "${ES_HEAP:--Xms2g -Xmx2g}"
         networks:
             - master
         deploy:
@@ -41,18 +40,34 @@ services:
                 condition: on-failure
             resources:
                 limits:
-                    # heap (1g) + off-heap overhead; 1G from the 6.x era OOMs on 9.x.
-                    memory: 2G
+                    # heap + off-heap overhead; 1G from the 6.x era OOMs on 9.x.
+                    memory: 4G
 
     logstash:
-        image: docker.elastic.co/logstash/logstash:9.4.3@sha256:03d605e3938504512a584b0d1209cf5768fdbaacb43b910a09c640bf7565fb12 # pinned 2026-07-14
+        # Stock 9.4.3 image plus the plugins the vendored configfiles need, and an
+        # entrypoint that assembles the pipeline directory. See docker/logstash/.
+        build:
+            context: ./docker/logstash
+        image: sof-elk-logstash:9.4.3
         volumes:
             - ./elk_config/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-            - ./sof-elk:/usr/local/sof-elk
+            - ./sof-elk:/usr/local/sof-elk:ro
             - ./resources/GeoIP:/usr/local/share/GeoIP
         ports:
-            - 5000/udp
-            - 5044
+            # Ports are internal-only by default. Publish the ones you need by
+            # adding a host mapping, e.g. "5514:5514/udp".
+            - 5044          # beats, from filebeat
+            - 5514/udp      # syslog
+            - 5514          # syslog
+            - 5516          # relp
+            - 5000/udp      # logspout (container logs from this stack)
+        environment:
+            ELASTICSEARCH_HOSTS: "elasticsearch:9200"
+            # -Xss4m is required, not tuning: the vendored pipeline is ~80 files
+            # deep and compiling it blows the default 1m JVM thread stack
+            # ("Stack overflow error while compiling Pipeline"). Upstream sets the
+            # same value in sof-elk/ansible/roles/logstash/tasks/main.yml.
+            LS_JAVA_OPTS: "${LS_HEAP:--Xms1g -Xmx1g} -Xss4m"
         networks:
             - master
         depends_on:
@@ -61,14 +76,15 @@ services:
         deploy:
             restart_policy:
                 condition: on-failure
-        # command: "--debug"
-        command: "bash -c 'logstash-plugin install logstash-input-relp logstash-filter-tld logstash-filter-rest && /usr/local/bin/docker-entrypoint'"
 
     # Takes logs from each microservice and pipes into logstash
     # NOTE: bekt/logspout-logstash is unmaintained (last push 2019-06, no semver
     # tags). Pinned by digest to satisfy the pinning invariant. See README for a
     # maintained alternative before relying on this in production.
     logspout:
+        # Off by default: `docker compose --profile logspout up -d`. Container
+        # logs land in dockerlogs-*, never in the SOF-ELK indices.
+        profiles: [ "logspout" ]
         image: bekt/logspout-logstash:latest@sha256:cbe0bd04dc3e65300337c0011ad4322bb476931077e3425d34373730bbbfa59f # pinned 2026-07-14 (unmaintained upstream)
         environment:
             ROUTE_URIS: 'logstash://logstash:5000'
@@ -89,7 +105,7 @@ services:
         image: docker.elastic.co/kibana/kibana:9.4.3@sha256:85e993bf4519827c84faa8a65265028d7ea572385f07ce8d913ad03025327ed7 # pinned 2026-07-14
         volumes:
             - ./elk_config/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
-            - ./sof-elk:/usr/local/sof-elk
+            - ./sof-elk:/usr/local/sof-elk:ro
         ports:
             - 5601
         networks:
@@ -109,14 +125,34 @@ services:
             - "traefik.http.routers.kibana.rule=Host(`kibana.${BASE_URL:-localhost}`)"
             - "traefik.http.services.kibana.loadbalancer.server.port=5601"
 
+    # One-shot. Loads the Elasticsearch component/index templates, Kibana data
+    # views and saved objects out of the vendored snapshot, then exits. Re-run any
+    # time with `docker compose up dashboard-loader`. On the VM this is the tail
+    # end of sof-elk/supporting-scripts/post_merge.sh.
+    dashboard-loader:
+        build:
+            context: ./docker/dashboard-loader
+        image: sof-elk-dashboard-loader:latest
+        volumes:
+            - ./sof-elk:/usr/local/sof-elk:ro
+        environment:
+            ES_HOST: elasticsearch
+            KIBANA_HOST: kibana
+        networks:
+            - master
+        depends_on:
+            - elasticsearch
+            - kibana
+        restart: "no"
+
     filebeat:
         image: docker.elastic.co/beats/filebeat:9.4.3@sha256:61bf789ac881c88c0edee6d490434e7a6d464d5f46a2bb1f5540a2301d4bdec3 # pinned 2026-07-14
         networks:
             - master
         volumes:
             - ./elk_config/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-            - ./sof-elk:/usr/local/sof-elk
-            - ./filebeat-data:/use/share/filebeat/data # persistent data storage, may remove, doesn't seem to be used
+            - ./sof-elk:/usr/local/sof-elk:ro
+            - ./filebeat-data:/usr/share/filebeat/data # persistent registry (which files have been read)
             - ./server-files:/logstash # for actual file processing
         environment:
             - ELASTICSEARCH_HOST=elasticsearch
@@ -148,4 +184,5 @@ networks:
     # Set to bridge to test locally and have ports be outside accessible
     master:
         name: "${network_name:-masternetwork}"
-        driver: overlay
+        # overlay for Swarm, bridge for a plain `docker compose up` (the default).
+        driver: "${network_driver:-bridge}"
