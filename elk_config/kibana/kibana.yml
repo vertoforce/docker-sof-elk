@@ -1,10 +1,21 @@
 ---
 ## Kibana 9.x configuration for the SOF-ELK lab stack.
+## Settings below mirror sof-elk/ansible/roles/kibana/files/kibana.yml, minus the
+## VM-only ones (log file appender, pid file, server.publicBaseUrl).
 #
-server.name: kibana
-server.host: "0"
+server.name: "SOF-ELK"
+server.host: "0.0.0.0"
 
 ## `elasticsearch.url` (a single string) was removed in 7.x in favour of
 ## `elasticsearch.hosts` (a list). Elasticsearch security is disabled in
 ## elasticsearch.yml, so no username/password/TLS is needed here.
 elasticsearch.hosts: ["http://elasticsearch:9200"]
+
+## Some SOF-ELK dashboards fan out over large time ranges.
+elasticsearch.shardTimeout: 90000
+
+telemetry.optIn: false
+telemetry.allowChangingOptInStatus: false
+
+## Security is off by design in this lab stack; the banner adds nothing.
+xpack.security.showInsecureClusterWarning: false

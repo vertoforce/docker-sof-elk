@@ -5,9 +5,13 @@ cluster.name: "docker-cluster"
 network.host: 0.0.0.0
 
 ## Single-node discovery disables production mode / bootstrap checks.
-## (discovery.zen.minimum_master_nodes was removed in Elasticsearch 7.x — the
+## (discovery.zen.minimum_master_nodes was removed in Elasticsearch 7.x - the
 ## Zen2 coordination layer replaced it and it is no longer a valid setting.)
 discovery.type: single-node
+
+## Matches sof-elk/ansible/roles/elasticsearch/files/elasticsearch.yml. SOF-ELK's
+## sof-elk_clear.py deletes indices by wildcard.
+action.destructive_requires_name: false
 
 ## Security is ON by default starting in Elasticsearch 8.x. This lab historically
 ## ran with no authentication (the 6.x images had none), and every downstream
