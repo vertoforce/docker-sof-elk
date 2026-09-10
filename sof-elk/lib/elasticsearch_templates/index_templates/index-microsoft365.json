@@ -1,0 +1,106 @@
+{
+  "index_patterns": [
+    "microsoft365-*"
+  ],
+  "composed_of": [
+    "settings-common",
+    "mappings-corecommon",
+    "mappings-string",
+    "mappings-ip_address",
+    "mappings-geohash",
+    "mappings-guid",
+    "mappings-port",
+    "mappings-final"
+  ],
+  "template": {
+    "mappings": {
+      "dynamic_templates": [
+        {
+          "sid_fields": {
+            "match": "*Sid",
+            "mapping": {
+              "type": "keyword"
+            }
+          }
+        },
+        {
+          "properties_fields": {
+            "match": [ "NewValue", "OldValue" ],
+            "mapping": {
+              "type": "text"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "o365": {
+          "properties": {
+            "audit": {
+              "properties": {
+                "Actor": {
+                  "type": "object"
+                },
+                "Folder": {
+                  "properties": {
+                    "Id": {
+                      "type": "keyword"
+                    }
+                  },
+                  "type": "object"
+                },
+                "Folders": {
+                  "type": "object"
+                },
+                "IsValid": {
+                  "type": "boolean"
+                },
+                "ListBaseType": {
+                  "type": "text"
+                },
+                "ModifiedProperties": {
+                  "type": "object"
+                },
+                "Operation": {
+                  "type": "keyword"
+                },
+                "OperationProperties": {
+                  "type": "object"
+                },
+                "Operations": {
+                  "type": "keyword"
+                },
+                "PSShowComputerName": {
+                  "type": "boolean"
+                },
+                "ResultStatus": {
+                  "type": "keyword"
+                },
+                "Target": {
+                  "type": "object"
+                },
+                "UserType": {
+                  "type": "integer"
+                },
+                "Version": {
+                  "type": "integer"
+                },
+                "Workload": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        "type": {
+          "type": "keyword"
+        },
+        "version": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "_meta": {
+    "provider": "SOF-ELK"
+  }
+}

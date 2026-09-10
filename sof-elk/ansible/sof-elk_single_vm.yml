@@ -1,0 +1,82 @@
+---
+# This playbook configures a single-instance SOF-ELK(R) system
+# (C)2026 Lewes Technology Consulting, LLC
+
+# To build a course version, use the following command line:
+# $ ansible-playbook -K -i /tmp/sof-elk/ansible/local_build.yml -e "course_build=aaa123 course_version=Z99" /tmp/sof-elk/ansible/sof-elk_single_vm.yml
+#
+# To modify a public build to a course build, use the following command line:
+# $ ansible-playbook -K -i /tmp/sof-elk/ansible/local_build.yml -e "course_build=aaa123 course_version=Z99" -t pub2course /tmp/sof-elk/ansible/sof-elk_single_vm.yml
+
+- name: Run all preload steps required for a SOF-ELK(R) system
+  hosts: all
+  become: true
+  become_method: sudo
+  become_user: root
+  become_exe: sudo.ws     # needed to work around a bug in Ubuntu 26.04
+                          # see https://www.reddit.com/r/ansible/comments/1t6ie61/become_true_not_working_with_ubuntu_2604_lts/
+  handlers:
+    - import_tasks: handlers/common.yml
+  vars:
+    elastic_stack_version: 9.4.3
+    ansible_python_interpreter: auto_silent
+
+  pre_tasks:
+    - name: Validate host operating system distribution
+      ansible.builtin.assert:
+        that:
+          - (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_version'] is version('26.04', '>=')) or
+            (ansible_facts['distribution'] == 'Debian' and ansible_facts['distribution_version'] is version('12', '>='))
+        fail_msg: "SOF-ELK requires Ubuntu >= 26.04 or Debian >= 12"
+        success_msg: "Supported OS version detected: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
+      tags: always
+
+    - name: "Get current git branch"
+      ansible.builtin.command: "git rev-parse --abbrev-ref HEAD"
+      args:
+        chdir: "{{ playbook_dir }}"
+      register: git_branch_result
+      check_mode: false
+      delegate_to: 127.0.0.1
+      run_once: true
+      changed_when: false
+      tags: always
+
+    # perform a course build by running ansible-playbook with "-e 'course_build=xxx123 course_version=Z99'" (must have both)
+    - name: Set facts needed downstream
+      ansible.builtin.set_fact:
+        ubuntu_architecture: "{{ 'arm64' if ansible_facts['architecture'] == 'aarch64' else 'amd64' }}"
+        course_id: "{{ course_build | default('public', true) | lower }}"
+        git_branch: "{{ git_branch_result.stdout }}"
+      tags: always
+
+    - name: Validate that a course_version has been specified if needed
+      ansible.builtin.fail:
+        msg: "Course ID was provided without a version.  Both are required for course-specific build."
+      when: (course_id is defined and course_id != 'public') and course_version is not defined
+      tags: always
+
+    # install user-based GeoIP databases by running ansible-playbook with "-e 'geoip_account=xxxxx geoip_key=xxxxxxx'" (must have both)
+    - name: Fail if GeoIP account is provided without a key
+      ansible.builtin.fail:
+        msg: "GeoIP account was provided without a key.  Both are required to install your own GeoIP databases."
+      when: geoip_account is defined and geoip_key is not defined
+      tags: always
+
+  roles:
+    - sof-elk_base
+    - elasticsearch
+# disabling - may remove.  role not updated for ubuntu
+#    - cerebro
+    - logstash
+    - filebeat
+    - kibana
+# disabling this until elastalert2 is usable
+#    - elastalert
+# disabling for now
+#    - domain-stats
+    - aws-cli
+    - gcp-cli
+    - azure-cli
+    - powershell
+    - sof-elk_finalize

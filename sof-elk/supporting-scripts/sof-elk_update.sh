@@ -1,58 +1,65 @@
 #!/bin/bash
 # SOF-ELK® Supporting script
-# (C)2019 Lewes Technology Consulting, LLC
+# (C)2026 Lewes Technology Consulting, LLC
 #
 # This script is used to update the repository from its git origin
-# It will not overwrite any local changes unless -force is specified
+# It will not overwrite any local changes unless -f (force) is specified
 
-FORCE=0
-
-if [[ $EUID -ne 0 ]]; then
-    echo "This script must be run as root.  Exiting."
+# include common functions
+functions_include="/usr/local/sof-elk/supporting-scripts/functions.sh"
+if [ -f "${functions_include}" ]; then
+    . "${functions_include}"
+else
+    echo "${functions_include} not present.  Exiting " 1>&2
     exit 1
 fi
 
-# parse any command line arguments
-if [ $# -gt 0 ]; then
-    while true; do
-        if [ $1 ]; then
-            if [ $1 == '-force' ]; then
-                FORCE=1
-            fi
-            shift
-        else
-            break
-        fi
-    done
-fi
+# set default values
+FORCE=0
 
-cd /usr/local/sof-elk/
-if [[ $( git status --porcelain ) && $FORCE -eq 0 ]]; then
-    echo "ERROR: You have local changes to this repository - will not overwrite without '-force'."
-    echo "       Note that using '-force' will delete any modifications made in the /usr/local/sof-elk/ directory."
-    exit 2
+# quit if not running with admin privs
+require_root
+
+# parse options
+while getopts ":f" opt; do
+    case "${opt}" in
+        f) FORCE=1 ;;
+        \?)
+            echoerr "ERROR: Invalid option: -${OPTARG}."
+            exit 2
+            ;;
+    esac
+done
+
+cd /usr/local/sof-elk/ || exit 3
+if [[ $( git status --porcelain ) && "${FORCE}" -eq 0 ]]; then
+    echoerr "ERROR: You have local changes to this repository - will not overwrite without '-f' to force."
+    echoerr "       Run 'git status' from the /usr/local/sof-elk/ directory to identify the local changes."
+    echoerr "       Note that using '-f' will delete any modifications that have been made in this directory."
+    exit 4
 fi
 
 /usr/local/sof-elk/supporting-scripts/git-remote-update.sh -now
-# This method adapted from method here: https://stackoverflow.com/a/3278427
-LOCAL=$(git rev-parse @{0})
-REMOTE=$(git rev-parse @{u})
-BASE=$(git merge-base @{0} @{u})
+# This method adapted from https://stackoverflow.com/a/3278427
+LOCAL=$(git rev-parse "@{0}")
+REMOTE=$(git rev-parse "@{u}")
+BASE=$(git merge-base "@{0}" "@{u}")
 
-if [[ $LOCAL = $REMOTE ]]; then
+if [[ "${LOCAL}" == "${REMOTE}" ]]; then
     echo "Up-to-date"
 
-elif [[ $LOCAL = $BASE ]]; then
+elif [[ "${LOCAL}" == "${BASE}" ]]; then
+    echo "Updating from upstream"
+
     # Need to pull
     git reset --hard > /dev/null
-    git pull origin
+    git clean -fdx > /dev/null
+    if ! PREV_COMMIT="${LOCAL}" git pull origin; then
+        echoerr "ERROR: git pull failed; not reloading Logstash."
+        exit 5
+    fi
 
-    /usr/local/sof-elk/supporting-scripts/git-remote-update.sh -now
-    for lspid in $( ps -u logstash | grep java | awk '{print $1}' ); do
-        kill -s HUP $lspid
-    done
-
-elif [[ $REMOTE = $BASE ]]; then
+elif [[ "${REMOTE}" == "${BASE}" ]]; then
     echo "Need to push - this should never happen"
 
 else

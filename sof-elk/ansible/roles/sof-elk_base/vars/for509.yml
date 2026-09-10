@@ -1,0 +1,24 @@
+---
+# Ansible file supporting the build of a SOF-ELK(R) standalone system
+# (C)2026 Lewes Technology Consulting, LLC
+
+local_ewb: true
+
+course_apt_packages:
+  - apache2
+  - netcat-traditional
+
+apache2_confs:
+  - no-cache
+  - workbook-redirect
+
+apache2_mods:
+  - rewrite
+  - expires
+  - headers
+
+ssh_confs:
+  - known_hosts
+  - config
+
+ssh_keytype: ed25519
