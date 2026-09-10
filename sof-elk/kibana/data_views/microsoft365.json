@@ -1,0 +1,18 @@
+{
+  "data_view": {
+    "allowHidden": false,
+    "allowNoIndex": true,
+    "fieldFormats": {
+      "@timestamp": {
+        "id": "date",
+        "params": {
+          "pattern": "YYYY-MM-DD HH:mm:ss.SSS\\Z"
+        }
+      }
+    },
+    "id": "microsoft365",
+    "name": "microsoft365-*",
+    "timeFieldName": "@timestamp",
+    "title": "microsoft365-*"
+  }
+}

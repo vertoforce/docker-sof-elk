@@ -1,0 +1,85 @@
+{
+  "attributes": {
+    "columns": [
+      "winlog.computer_name",
+      "winlog.user.name",
+      "winlog.event_id",
+      "winlog.channel",
+      "message"
+    ],
+    "description": "",
+    "grid": {
+      "columns": {
+        "winlog.event_id": {
+          "width": 154
+        }
+      }
+    },
+    "hideChart": false,
+    "hits": 0,
+    "isTextBasedQuery": false,
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"filter\":[],\"highlightAll\":true,\"indexRefName\":\"kibanaSavedObjectMeta.searchSourceJSON.index\",\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"version\":true}"
+    },
+    "sort": [
+      [
+        "@timestamp",
+        "desc"
+      ]
+    ],
+    "tabs": [
+      {
+        "attributes": {
+          "columns": [
+            "winlog.computer_name",
+            "winlog.user.name",
+            "winlog.event_id",
+            "winlog.channel",
+            "message"
+          ],
+          "grid": {
+            "columns": {
+              "winlog.event_id": {
+                "width": 154
+              }
+            }
+          },
+          "hideChart": false,
+          "hits": 0,
+          "isTextBasedQuery": false,
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"filter\":[],\"highlightAll\":true,\"indexRefName\":\"kibanaSavedObjectMeta.searchSourceJSON.index\",\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"version\":true}"
+          },
+          "sort": [
+            [
+              "@timestamp",
+              "desc"
+            ]
+          ],
+          "timeRestore": false,
+          "version": 1
+        },
+        "id": "aa41bd1e-5f74-40a0-8962-c3615290e421",
+        "label": "Untitled"
+      }
+    ],
+    "timeRestore": false,
+    "title": "Eventlog Discovery",
+    "version": 1
+  },
+  "coreMigrationVersion": "8.8.0",
+  "id": "eb2ab450-8d08-11e9-a03c-33ad7fc2c4d0",
+  "managed": false,
+  "namespaces": [
+    "default"
+  ],
+  "references": [
+    {
+      "id": "evtxlogs",
+      "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
+      "type": "index-pattern"
+    }
+  ],
+  "type": "search",
+  "typeMigrationVersion": "10.12.0"
+}

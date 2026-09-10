@@ -1,0 +1,20 @@
+# Vendored SOF-ELK snapshot
+
+repository: https://github.com/philhagen/sof-elk
+branch:     public/v20260706
+commit:     321142e20629c8092d5aa395270d93182c081e59
+date:       2026-09-09
+vendored:   2026-09-10
+
+Everything else in this directory is an unmodified copy of that commit,
+minus the .git directory. Do not edit files here. Docker-specific overrides
+live in elk_config/ and are layered on top at container start.
+
+To refresh:
+
+  git clone --depth 1 --branch public/vYYYYMMDD \
+      https://github.com/philhagen/sof-elk.git /tmp/sof-elk-upstream
+  rm -rf sof-elk && mkdir sof-elk
+  (cd /tmp/sof-elk-upstream && tar --exclude=.git -cf - .) | tar -xf - -C sof-elk
+
+Then update the commit/branch/date above.

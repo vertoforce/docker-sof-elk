@@ -1,13 +1,11 @@
 # https://www.elastic.co/guide/en/beats/filebeat/current/configuration-filebeat-options.html
-
-# `filebeat.config_dir` was REMOVED in Filebeat 7.x. Load reloadable external
-# input definitions via `filebeat.config.inputs` instead.
 #
-# NOTE: the vendored input files in sof-elk/lib/filebeat_inputs/*.yml are a 2020
-# snapshot and still use `filebeat.prospectors` + `type: log`, both removed in
-# 8.x (now `filebeat.inputs` + the `filestream` input type). They must be
-# migrated before Filebeat will successfully load them -- see the "Known
-# migration gaps" section of the README.
+# Mirrors sof-elk/ansible/roles/filebeat/files/filebeat.yml, with the Logstash
+# host taken from the environment instead of localhost.
+#
+# `filebeat.config_dir` was removed in Filebeat 7.x; external input definitions
+# load via `filebeat.config.inputs`.
+
 filebeat.config.inputs:
   enabled: true
   path: /usr/local/sof-elk/lib/filebeat_inputs/*.yml

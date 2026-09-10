@@ -1,125 +1,258 @@
 # SOF-ELK® Configuration File
-# (C)2017 Lewes Technology Consulting, LLC
+# (C)2026 Lewes Technology Consulting, LLC
 #
-# This file creates filebeats prospector for Zeek source data from the SOF-ELK® VM itself
+# This file creates filebeat prospectors for Zeek source data from the SOF-ELK® VM itself
 
-filebeat.prospectors:
-  - type: log
-    paths:
-      - /logstash/zeek/*/*/*/*/conn.*
-      - /logstash/zeek/*/*/*/conn.*
-      - /logstash/zeek/*/*/conn.*
-      - /logstash/zeek/*/conn.*
-      - /logstash/zeek/conn.*
-    exclude_files: [ '\.gz$', '\.bz2$', '\.zip$' ]
-    exclude_lines: [ '^#' ]
-    close_inactive: 5m
-    fields_under_root: true
-    fields:
-      type: zeek_conn
-    tags: [ 'zeek' ]
+- type: filestream
+  id: zeek-conn-01
+  paths:
+    - /logstash/zeek/**/conn.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_conn
+  tags: [ 'zeek' ]
 
-  - type: log
-    paths:
-      - /logstash/zeek/*/*/*/*/dhcp.*
-      - /logstash/zeek/*/*/*/dhcp.*
-      - /logstash/zeek/*/*/dhcp.*
-      - /logstash/zeek/*/dhcp.*
-      - /logstash/zeek/dhcp.*
-    exclude_files: [ '\.gz$', '\.bz2$', '\.zip$' ]
-    exclude_lines: [ '^#' ]
-    close_inactive: 5m
-    fields_under_root: true
-    fields:
-      type: zeek_dhcp
-    tags: [ 'zeek' ]
+- type: filestream
+  id: zeek-dns-01
+  paths:
+    - /logstash/zeek/**/dns.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_dns
+  tags: [ 'zeek' ]
 
-  - type: log
-    paths:
-      - /logstash/zeek/*/*/*/*/dns.*
-      - /logstash/zeek/*/*/*/dns.*
-      - /logstash/zeek/*/*/dns.*
-      - /logstash/zeek/*/dns.*
-      - /logstash/zeek/dns.*
-    exclude_files: [ '\.gz$', '\.bz2$', '\.zip$' ]
-    exclude_lines: [ '^#' ]
-    close_inactive: 5m
-    fields_under_root: true
-    fields:
-      type: zeek_dns
-    tags: [ 'zeek' ]
+- type: filestream
+  id: zeek-http-01
+  paths:
+    - /logstash/zeek/**/http.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_http
+  tags: [ 'zeek' ]
 
-  - type: log
-    paths:
-      - /logstash/zeek/*/*/*/*/dpd.*
-      - /logstash/zeek/*/*/*/dpd.*
-      - /logstash/zeek/*/*/dpd.*
-      - /logstash/zeek/*/dpd.*
-      - /logstash/zeek/dpd.*
-    exclude_files: [ '\.gz$', '\.bz2$', '\.zip$' ]
-    exclude_lines: [ '^#' ]
-    close_inactive: 5m
-    fields_under_root: true
-    fields:
-      type: zeek_dpd
-    tags: [ 'zeek' ]
+- type: filestream
+  id: zeek-files-01
+  paths:
+    - /logstash/zeek/**/files.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_files
+  tags: [ 'zeek' ]
 
-  - type: log
-    paths:
-      - /logstash/zeek/*/*/*/*/files.*
-      - /logstash/zeek/*/*/*/files.*
-      - /logstash/zeek/*/*/files.*
-      - /logstash/zeek/*/files.*
-      - /logstash/zeek/files.*
-    exclude_files: [ '\.gz$', '\.bz2$', '\.zip$' ]
-    exclude_lines: [ '^#' ]
-    close_inactive: 5m
-    fields_under_root: true
-    fields:
-      type: zeek_files
-    tags: [ 'zeek' ]
+- type: filestream
+  id: zeek-ssl-01
+  paths:
+    - /logstash/zeek/**/ssl.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_ssl
+  tags: [ 'zeek' ]
 
-  - type: log
-    paths:
-      - /logstash/zeek/*/*/*/*/ftp.*
-      - /logstash/zeek/*/*/*/ftp.*
-      - /logstash/zeek/*/*/ftp.*
-      - /logstash/zeek/*/ftp.*
-      - /logstash/zeek/ftp.*
-    exclude_files: [ '\.gz$', '\.bz2$', '\.zip$' ]
-    exclude_lines: [ '^#' ]
-    close_inactive: 5m
-    fields_under_root: true
-    fields:
-      type: zeek_ftp
-    tags: [ 'zeek' ]
+- type: filestream
+  id: zeek-x509-01
+  paths:
+    - /logstash/zeek/**/x509.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_x509
+  tags: [ 'zeek' ]
 
-  - type: log
-    paths:
-      - /logstash/zeek/*/*/*/*/http.*
-      - /logstash/zeek/*/*/*/http.*
-      - /logstash/zeek/*/*/http.*
-      - /logstash/zeek/*/http.*
-      - /logstash/zeek/http.*
-    exclude_files: [ '\.gz$', '\.bz2$', '\.zip$' ]
-    exclude_lines: [ '^#' ]
-    close_inactive: 5m
-    fields_under_root: true
-    fields:
-      type: zeek_http
-    tags: [ 'zeek' ]
+- type: filestream
+  id: zeek-ftp-01
+  paths:
+    - /logstash/zeek/**/ftp.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_ftp
+  tags: [ 'zeek' ]
 
-  - type: log
-    paths:
-      - /logstash/zeek/*/*/*/*/irc.*
-      - /logstash/zeek/*/*/*/irc.*
-      - /logstash/zeek/*/*/irc.*
-      - /logstash/zeek/*/irc.*
-      - /logstash/zeek/irc.*
-    exclude_files: [ '\.gz$', '\.bz2$', '\.zip$' ]
-    exclude_lines: [ '^#' ]
-    close_inactive: 5m
-    fields_under_root: true
-    fields:
-      type: zeek_irc
-    tags: [ 'zeek' ]
+- type: filestream
+  id: zeek-notice-01
+  paths:
+    - /logstash/zeek/**/notice.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_notice
+  tags: [ 'zeek' ]
+
+- type: filestream
+  id: zeek-weird-01
+  paths:
+    - /logstash/zeek/**/weird.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_weird
+  tags: [ 'zeek' ]
+
+# using modbus_detailed.* because those contain response values
+- type: filestream
+  id: zeek-modbus-01
+  paths:
+    - /logstash/zeek/**/modbus_detailed.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_modbus_detailed
+  tags: [ 'zeek' ]
+
+# using omron_fins_detail.* because it contains a superset of fields from omron_fins_general
+- type: filestream
+  id: zeek-omron-fins-01
+  paths:
+    - /logstash/zeek/**/omron_fins_detail.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_omron_fins_detail
+  tags: [ 'zeek' ]
+
+- type: filestream
+  id: zeek-enip-01
+  paths:
+    - /logstash/zeek/**/enip.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_enip
+  tags: [ 'zeek' ]
+
+- type: filestream
+  id: zeek-cip-01
+  paths:
+    - /logstash/zeek/**/cip.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_cip
+  tags: [ 'zeek' ]
+
+- type: filestream
+  id: zeek-ja4ssh-01
+  paths:
+    - /logstash/zeek/**/ja4ssh.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_ja4ssh
+  tags: [ 'zeek' ]
+
+- type: filestream
+  id: zeek-ja4d-01
+  paths:
+    - /logstash/zeek/**/ja4d.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_ja4d
+  tags: [ 'zeek' ]
+
+- type: filestream
+  id: zeek-dhcp-01
+  paths:
+    - /logstash/zeek/**/dhcp.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_dhcp
+  tags: [ 'zeek' ]
+
+- type: filestream
+  id: zeek-irc-01
+  paths:
+    - /logstash/zeek/**/irc.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_irc
+  tags: [ 'zeek' ]
+
+- type: filestream
+  id: zeek-ssh-01
+  paths:
+    - /logstash/zeek/**/ssh.*
+  compression: auto
+  prospector.scanner.exclude_files: [ '\.bz2$', '\.zip$' ]
+  close.on_state_change.inactive: 5m
+  clean_removed: true
+  processors:
+    - add_labels:
+       labels:
+         type: zeek_ssh
+  tags: [ 'zeek' ]

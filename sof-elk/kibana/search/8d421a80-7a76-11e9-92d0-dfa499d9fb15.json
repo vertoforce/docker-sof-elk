@@ -1,0 +1,71 @@
+{
+  "attributes": {
+    "columns": [
+      "file.path",
+      "file.mtime",
+      "file.target.absolute_path",
+      "file.target.mtime"
+    ],
+    "description": "",
+    "grid": {},
+    "hideChart": false,
+    "hits": 0,
+    "isTextBasedQuery": false,
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"filter\":[],\"highlightAll\":true,\"indexRefName\":\"kibanaSavedObjectMeta.searchSourceJSON.index\",\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"version\":true}"
+    },
+    "sort": [
+      [
+        "@timestamp",
+        "desc"
+      ]
+    ],
+    "tabs": [
+      {
+        "attributes": {
+          "columns": [
+            "file.path",
+            "file.mtime",
+            "file.target.absolute_path",
+            "file.target.mtime"
+          ],
+          "grid": {},
+          "hideChart": false,
+          "hits": 0,
+          "isTextBasedQuery": false,
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"filter\":[],\"highlightAll\":true,\"indexRefName\":\"kibanaSavedObjectMeta.searchSourceJSON.index\",\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"version\":true}"
+          },
+          "sort": [
+            [
+              "@timestamp",
+              "desc"
+            ]
+          ],
+          "timeRestore": false,
+          "version": 1
+        },
+        "id": "8e678a89-165e-4944-b5f1-86f18c2e919b",
+        "label": "Untitled"
+      }
+    ],
+    "timeRestore": false,
+    "title": "LNKfile Discovery",
+    "version": 1
+  },
+  "coreMigrationVersion": "8.8.0",
+  "id": "8d421a80-7a76-11e9-92d0-dfa499d9fb15",
+  "managed": false,
+  "namespaces": [
+    "default"
+  ],
+  "references": [
+    {
+      "id": "lnkfiles",
+      "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
+      "type": "index-pattern"
+    }
+  ],
+  "type": "search",
+  "typeMigrationVersion": "10.12.0"
+}

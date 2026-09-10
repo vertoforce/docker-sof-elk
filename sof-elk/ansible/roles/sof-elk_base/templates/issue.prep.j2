@@ -1,0 +1,36 @@
+[H[2J\S
+Kernel \r on an \m
+
+SOF-ELK: Security Operations and Forensic ELK (Elasticsearch,
+         Logstash, and Kibana) Virtual machine
+{%  if course_id != "" -%}
+{%-   set first = course_list | selectattr('id', 'equalto', course_id)  | list -%}
+{%-   set second = [] %}
+{%-   if course_id == "FOR668" -%}
+{%-     set second = course_list | selectattr('id', 'equalto', 'FOR669') | list -%}
+{%-     set rest = course_list | rejectattr('id', 'equalto', course_id) | rejectattr('id', 'equalto', 'FOR669') | rejectattr('publicvmonly') | sort(attribute='order') | list %}
+{%-   else -%}
+{%-     set rest = course_list | rejectattr('id', 'equalto', course_id) | rejectattr('publicvmonly') | sort(attribute='order') | list %}
+{%-   endif -%}
+{%-   set course_list = first + second + rest -%}
+{%- else -%}
+{%-   set course_list = course_list | sort(attribute='order') -%}
+{%- endif -%}
+{%- for course in course_list -%}
+{%-   if loop.first %}         Used in: {% else %}
+                  {% endif %}{{ course.brand }}{% if course.id != "" %} {{ course.id }}{% endif %}: {{ course.name }}
+{%- endfor -%}
+To learn more: https://for572.com/sof-elk-readme
+Revision: {{ revision_string }}
+-------------------------------------------------------------------------------
+{%if local_ewb | default(false) %}
+This system is hosting the {{ course_id }} Electronic Workbook.
+- You can access it with a browser at http://\4
+{% endif %}
+This system is running the Logstash and Kibana applications.
+- You can access Kibana at http://\4:5601
+- You can SSH to this system at IP address \4
+
+SOF-ELK will ingest log files placed into the "/logstash/*/"
+directories.  See the Kibana homepage (link above) for specific guidance.
+

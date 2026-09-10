@@ -1,0 +1,71 @@
+{
+  "attributes": {
+    "columns": [
+      "netflow.exporter.ip",
+      "network.transport",
+      "source.ip",
+      "source.port",
+      "destination.ip",
+      "destination.port",
+      "network.bytes",
+      "network.packets"
+    ],
+    "description": "",
+    "hits": 0,
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"filter\":[],\"highlightAll\":true,\"indexRefName\":\"kibanaSavedObjectMeta.searchSourceJSON.index\",\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"version\":true}"
+    },
+    "sort": [
+      [
+        "@timestamp",
+        "desc"
+      ]
+    ],
+    "tabs": [
+      {
+        "attributes": {
+          "columns": [
+            "netflow.exporter.ip",
+            "network.transport",
+            "source.ip",
+            "source.port",
+            "destination.ip",
+            "destination.port",
+            "network.bytes",
+            "network.packets"
+          ],
+          "hits": 0,
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"filter\":[],\"highlightAll\":true,\"indexRefName\":\"kibanaSavedObjectMeta.searchSourceJSON.index\",\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"version\":true}"
+          },
+          "sort": [
+            [
+              "@timestamp",
+              "desc"
+            ]
+          ],
+          "version": 1
+        },
+        "id": "48f9e5f4-a44c-4b4e-901a-83b684943f7b",
+        "label": "Untitled"
+      }
+    ],
+    "title": "NetFlow Discovery",
+    "version": 1
+  },
+  "coreMigrationVersion": "8.8.0",
+  "id": "fa3332b0-72b0-11e8-9159-894bd7d62352",
+  "managed": false,
+  "namespaces": [
+    "default"
+  ],
+  "references": [
+    {
+      "id": "netflow",
+      "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
+      "type": "index-pattern"
+    }
+  ],
+  "type": "search",
+  "typeMigrationVersion": "10.12.0"
+}

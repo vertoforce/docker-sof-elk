@@ -1,0 +1,38 @@
+{
+  "index_patterns": [
+    "aws-*"
+  ],
+  "composed_of": [
+    "settings-common",
+    "mappings-corecommon",
+    "mappings-string",
+    "mappings-ip_address",
+    "mappings-geohash",
+    "mappings-final"
+  ],
+  "template": {
+    "mappings": {
+      "dynamic_templates": [
+        {
+          "request_parameters_fields": {
+            "path_match": "request_parameters.*",
+            "mapping": {
+              "type": "keyword"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "type": {
+          "type": "keyword"
+        },
+        "version": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "_meta": {
+    "provider": "SOF-ELK"
+  }
+}

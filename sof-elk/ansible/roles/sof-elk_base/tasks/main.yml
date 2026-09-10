@@ -1,0 +1,456 @@
+---
+# Ansible file supporting the build of a SOF-ELK(R) standalone system
+# (C)2026 Lewes Technology Consulting, LLC
+
+- name: Update localtime symlink to Etc/UTC
+  ansible.builtin.file:
+    src: /usr/share/zoneinfo/Etc/UTC
+    dest: /etc/localtime
+    owner: root
+    group: root
+    state: link
+  register: utc_localtime
+  tags: sof-elk_base
+
+- name: Update timezone file to Etc/UTC
+  ansible.builtin.copy:
+    content: "Etc/UTC\n"
+    dest: /etc/timezone
+    owner: root
+    group: root
+    mode: 0644
+  register: utc_timezone
+  tags: sof-elk_base
+
+- name: Reconfigure Timezone Data
+  ansible.builtin.shell: dpkg-reconfigure -f noninteractive tzdata
+  when: utc_localtime.changed or utc_timezone.changed
+  tags: sof-elk_base
+
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: sof-elk
+  tags: sof-elk_base
+
+- name: Update all software packages
+  ansible.builtin.apt:
+    update_cache: true
+    name: '*'
+    state: latest
+  environment:
+    APT_OPTIONS: "-o APT::Get::Always-Include-Phased-Updates=true"
+  tags: sof-elk_base
+
+- name: Install core software set via apt
+  ansible.builtin.apt:
+    name: '{{ base_apt_packages }}'
+    state: present
+  tags: sof-elk_base
+
+- name: Install VMware-specific packages if installing to VMware guest
+  ansible.builtin.apt:
+    name: '{{ vmware_apt_packages }}'
+    state: present
+  # NOTE: the ansible_facts['system_vendor'] qualifier was added because the other two are "NA" when using VMware on Apple Silicon
+  when: (ansible_facts['virtualization_role'] == "guest" and ansible_facts['virtualization_type'] == "VMware") or ansible_facts['system_vendor'] == "VMware, Inc."
+  tags: sof-elk_base
+
+- name: Set SSHD configuration options
+  ansible.builtin.lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: '{{ item.regex }}'
+    line: '{{ item.line }}'
+  with_items:
+    - { name: 'Disable DNS host validation', regex: '^UseDNS.*', line: 'UseDNS no' }
+    - { name: 'Enable PasswordAuthentication', regex: '^PasswordAuthentication', line: 'PasswordAuthentication yes' }
+    - { name: 'Enable KbdInteractiveAuthentication', regex: '^KbdInteractiveAuthentication', line: 'KbdInteractiveAuthentication yes' }
+  loop_control:
+    label: "{{ item.name }}"
+  notify:
+    - restart sshd
+  tags: sof-elk_base
+
+- name: Create SSHD host key generation service
+  ansible.builtin.copy:
+    src: sshd-keygen.service
+    dest: /usr/lib/systemd/system/sshd-keygen.service
+    owner: root
+    group: root
+    mode: 0644
+  tags:
+    - sof-elk_base
+
+- name: Start and enable SSHD host key generation service
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    name: sshd-keygen
+    enabled: true
+    state: started
+  tags:
+    - sof-elk_base
+
+- name: Set SSHD host key generation service order
+  ansible.builtin.lineinfile:
+    dest: /usr/lib/systemd/system/ssh.service
+    regexp: '^After=.*'
+    line: 'After=network.target sshd-keygen.service auditd.service'
+  notify: 
+    - restart sshd
+  tags:
+    - sof-elk_base
+
+- name: Deploy static sshd-vsock.socket
+  ansible.builtin.copy:
+    src: sshd-vsock.socket
+    dest: /etc/systemd/system/sshd-vsock.socket
+    owner: root
+    group: root
+    mode: '0644'
+  register: sshd_vsock
+  tags:
+    - sof-elk_base
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: sshd_vsock.changed
+  tags:
+    - sof-elk_base
+
+- name: Remove sshd-vsock.socket issue.d file
+  ansible.builtin.file:
+    path: /run/issue.d/50-ssh-vsock.issue
+    state: absent
+  tags:
+    - sof-elk_base
+
+- name: Start and enable SSHD
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    name: ssh
+    enabled: true
+    state: started
+  register: enablestart_sshd
+  tags:
+    - sof-elk_base
+
+- name: Set netplan configuration
+  ansible.builtin.shell: |
+    netplan set "network.ethernets.{{ ansible_facts['default_ipv4']['interface'] }}.match.macaddress"=NULL
+    netplan set "network.ethernets.{{ ansible_facts['default_ipv4']['interface'] }}.match.name"="{{ ansible_facts['default_ipv4']['interface'] }}"
+  notify:
+    - apply netplan
+  tags:
+    - sof-elk_base
+
+- name: Disable nfcapd service
+  ansible.builtin.systemd_service:
+    name: nfdump
+    enabled: false
+    state: stopped
+  tags: sof-elk_base
+
+- name: Modify secure_path in /etc/sudoers
+  ansible.builtin.lineinfile:
+    dest: '/etc/sudoers'
+    regex: '^Defaults.*secure_path'
+    line: 'Defaults    secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/usr/local/sof-elk/supporting-scripts"'
+  tags: sof-elk_base
+
+- name: Get list of local user accounts
+  ansible.builtin.getent:
+    database: passwd
+    key: elk_user
+    fail_key: false
+  tags: sof-elk_base
+
+- name: Create elk_user account
+  ansible.builtin.user:
+    name: 'elk_user'
+    comment: 'SOF-ELK User'
+    password: '$6$572forsofelk$BdARbzeCTR5w.I/Tcjy8S2MxFjU51xEuzv/V30oUuL1n8P.GtOC7sQ2ZIUkoGWITBXnfAZAXzOWDz5djiLLK.1'
+    groups: sudo
+    append: true
+    shell: /bin/bash
+    skeleton: /etc/skel
+    state: present
+  when: ansible_facts['getent_passwd']['elk_user'] == none
+  tags: sof-elk_base
+
+- name: Add to elk_user's .profile
+  ansible.builtin.blockinfile:
+    path: '/home/elk_user/.profile'
+    owner: elk_user
+    group: elk_user
+    create: true
+    block: |
+      # Run post-login script for sof-elk specific messages
+      if [ -f /usr/local/sof-elk/supporting-scripts/elk_user_login.sh ]; then
+          . /usr/local/sof-elk/supporting-scripts/elk_user_login.sh
+      fi
+  tags: sof-elk_base
+
+- name: Create vim configs if they do not exist
+  ansible.builtin.copy:
+    content: ''
+    dest: '~{{ item }}/.vimrc'
+    force: false
+    owner: '{{ item }}'
+    group: '{{ item }}'
+    mode: 0600
+  with_items:
+    - [ 'root', 'elk_user' ]
+  tags: sof-elk_base
+
+- name: Configure vim
+  ansible.builtin.lineinfile:
+    dest: '~{{ item[0] }}/.vimrc'
+    regex: '^{{ item[1] }}'
+    line: '{{ item[1] }}'
+    create: true
+  loop_control:
+    label: "{{ item[0] }}: {{ item[1] }}"
+  with_nested:
+    - [ 'root', 'elk_user' ]
+    - [ 'set smartindent', 'set tabstop=4', 'set shiftwidth=4', 'set expandtab', 'colorscheme torte', 'set hlsearch' ]
+  tags: sof-elk_base
+
+- name: Set elk_user to hushed logins
+  ansible.builtin.file:
+    path: /home/elk_user/.hushlogin
+    state: touch
+    mode: 0640
+    owner: elk_user
+    group: elk_user
+    modification_time: preserve
+    access_time: preserve
+  tags: sof-elk_base
+
+- name: Set up pre-login banner template
+  ansible.builtin.template:
+    src: 'issue.prep.j2'
+    dest: '/etc/issue.prep'
+    owner: root
+    group: root
+    mode: 0644
+  tags:
+    - sof-elk_base
+    - pub2course
+
+- name: Set new revision string in pre-login banner
+  ansible.builtin.set_fact:
+    revision_string: "*Ansible-built* on {{ ansible_facts['date_time']['date'] }} from branch {{ git_branch }}"
+  tags:
+    - sof-elk_base
+    - pub2course
+
+- name: Set up custom pre-login banner
+  ansible.builtin.template:
+    src: 'issue.prep.j2'
+    dest: '/etc/issue'
+    owner: root
+    group: root
+    mode: 0644
+  register: issue_banner
+  tags:
+    - sof-elk_base
+    - pub2course
+
+- name: Activate the new pre-login banner
+  ansible.builtin.shell: /usr/sbin/agetty --reload
+  when: issue_banner.changed
+  tags:
+    - sof-elk_base
+    - pub2course
+
+- name: Set up sysctl configuration
+  ansible.builtin.copy:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - { src: 'sof-elk_sysctl.conf', dest: '/etc/sysctl.d/sof-elk.conf' }
+  register: sysctl_update
+  tags: sof-elk_base
+
+- name: Load sysctl settings
+  ansible.builtin.command: 'sysctl --system'
+  when: sysctl_update.changed
+  tags: sof-elk_base
+
+- name: Compress rotated log files
+  ansible.builtin.lineinfile:
+    dest: '/etc/logrotate.conf'
+    insertbefore: "^include"
+    firstmatch: true
+    regex: '^#? *compress'
+    line: 'compress'
+  tags: sof-elk_base
+
+- name: Clone/update SOF-ELK repo
+  ansible.builtin.git:
+    repo: 'https://github.com/philhagen/sof-elk'
+    dest: '/usr/local/sof-elk'
+    version: "{{ git_branch }}"
+    update: true
+  tags:
+    - sof-elk_base
+    - pub2course
+
+- name: Create elk_user's .gitconfig file
+  ansible.builtin.file:
+    path: /home/elk_user/.gitconfig
+    state: touch
+    mode: 0640
+    owner: elk_user
+    group: elk_user
+    modification_time: preserve
+    access_time: preserve
+  tags: sof-elk_base
+
+# the 'git config' command running with sudo reverts file ownership to root:root
+- name: Add SOF-ELK repo clone as a safe directory
+  community.general.git_config:
+    scope: file
+    file: /home/elk_user/.gitconfig
+    name: safe.directory
+    value: /usr/local/sof-elk
+  tags: sof-elk_base
+
+# this is needed due to issue noted in previous block
+- name: Reset ownership on elk_user's .gitconfig file
+  ansible.builtin.file:
+    path: /home/elk_user/.gitconfig
+    state: file
+    owner: elk_user
+    group: elk_user
+  tags: sof-elk_base
+
+- name: Set SOF-ELK repo clone post-merge hook
+  ansible.builtin.copy:
+    src: 'sof-elk_post-merge.sh'
+    dest: '/usr/local/sof-elk/.git/hooks/post-merge'
+    owner: root
+    group: root
+    mode: 0700
+  tags: sof-elk_base
+
+- name: Create required symlinks from git repo
+  ansible.builtin.file:
+    state: link
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+  with_items:
+    - { src: '/usr/local/sof-elk/supporting-scripts/distro_prep.sh', dest: '/root/distro_prep.sh' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/ls_plugin_update.sh', dest: '/var/lib/dpkg/info/logstash:{{ ubuntu_architecture }}.postinst' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/load_all_dashboards.sh', dest: '/var/lib/dpkg/info/kibana:{{ ubuntu_architecture }}.postinst' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/es_plugin_update.sh', dest: '/var/lib/dpkg/info/elasticsearch:{{ ubuntu_architecture }}.postinst' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/csv2json.py', dest: '/usr/local/sbin/csv2json.py' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/fw_modify.sh', dest: '/usr/local/sbin/fw_modify.sh' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/load_all_dashboards.sh', dest: '/usr/local/sbin/load_all_dashboards.sh' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/nfdump2sof-elk.sh', dest: '/usr/local/sbin/nfdump2sof-elk.sh' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/post_merge.sh', dest: '/usr/local/sbin/post_merge.sh' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/sof-elk_branch.sh', dest: '/usr/local/sbin/sof-elk_branch.sh' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/sof-elk_clear.py', dest: '/usr/local/sbin/sof-elk_clear.py' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/sof-elk_update.sh', dest: '/usr/local/sbin/sof-elk_update.sh' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/kick-aws-logs.sh', dest: '/usr/local/sbin/kick-aws-logs.sh' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/cronjobs/git-remote-update.cron', dest: '/etc/cron.d/git-remote-update' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/geoip_bootstrap.sh', dest: '/usr/local/sbin/geoip_bootstrap.sh' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/geoip_update_logstash.sh', dest: '/usr/local/sbin/geoip_update_logstash.sh' }
+    - { src: '/usr/local/sof-elk/supporting-scripts/volatility2sof-elk.py', dest: '/usr/local/sbin/volatility2sof-elk.py' }
+    - { src: '/usr/local/sof-elk/lib/scrawl_s.fnt.gz', dest: '/usr/share/consolefonts/scrawl_s.fnt.gz' }
+    - { src: '/usr/local/sof-elk/lib/scrawl_w.fnt.gz', dest: '/usr/share/consolefonts/scrawl_w.fnt.gz' }
+  loop_control:
+    label: "{{ item.dest }}"
+  tags: sof-elk_base
+
+- name: Install default GeoIP configuration
+  ansible.builtin.copy:
+    src: 'GeoIP.conf.default'
+    dest: '/etc/GeoIP.conf.default'
+    owner: root
+    group: root
+    mode: 0644
+  tags: sof-elk_base
+
+- name: Create geoip database directory
+  ansible.builtin.file:
+    path: '/usr/local/share/GeoIP'
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  tags: sof-elk_base
+
+# note: these files were downloaded from https://web.archive.org/web/20191222130401/https://dev.maxmind.com/geoip/geoip2/geolite2/ on 2023-06-20
+- name: Download final versions of old-licensed GeoIP databases
+  ansible.builtin.get_url:
+    url: https://sof-elk.com/dist/GeoLite2-{{ item.name }}.mmdb
+    dest: /usr/local/share/GeoIP/GeoLite2-{{ item.name }}.mmdb
+    checksum: md5:{{ item.md5 }}
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - { name: 'ASN', md5: 'c20977100c0a6c0842583ba158e906ec' }
+    - { name: 'City', md5: '4c60b3acf2e6782d48ce2b42979f7b98' }
+    - { name: 'Country', md5: '849e7667913e375bb3873f8778e8fb17' }
+  loop_control:
+    label: "{{ item.name }}"
+  when: geoip_account is not defined
+  tags: sof-elk_base
+
+- name: Install templated GeoIP configuration to perform download
+  ansible.builtin.template:
+    src: 'GeoIP.conf.j2'
+    dest: '/etc/GeoIP.conf'
+    owner: root
+    group: root
+    mode: 0600
+  when: geoip_account is defined
+  tags: sof-elk_base
+
+- name: Install geoip data
+  ansible.builtin.command: geoipupdate
+  when: geoip_account is defined
+  tags: sof-elk_base
+
+- name: Create sample evidence directory
+  ansible.builtin.file:
+    path: /home/elk_user/sample_evidence
+    state: directory
+    owner: elk_user
+    group: elk_user
+    mode: 0755
+  when: course_id == "public"
+  tags: sof-elk_base
+
+- name: Install sample evidence files
+  ansible.builtin.get_url:
+    url: https://sof-elk.com/dist/sample_evidence/{{ item.name }}
+    dest: /home/elk_user/sample_evidence/{{ item.name }}
+    checksum: md5:{{ item.md5 }}
+    owner: elk_user
+    group: elk_user
+    mode: 0644
+  with_items:
+    - { name: 'lab-2.3_README.txt', md5: '08e7d0e43830edc67d57ad0952b4d37b' }
+    - { name: 'lab-2.3_source_evidence.zip', md5: 'cdb30018bd02639b9a1ab4f5bc10009e' }
+    - { name: 'lab-3.1_README.txt', md5: 'c274173fe8b96c9f2086475534fda364' }
+    - { name: 'lab-3.1_source_evidence.zip', md5: '3996469559f0791c135b8700606b49ff' }
+  loop_control:
+    label: "{{ item.name }}"
+  when: course_id == "public"
+  tags: sof-elk_base
+
+- name: Include course-specific tasks, if present
+  ansible.builtin.include_tasks:
+    file: "{{ course_tasks_file }}"
+  vars:
+    course_tasks_file: "{{ lookup('ansible.builtin.first_found', files='{{course_id}}.yml', errors='ignore', skip=True ) }}"
+  when: course_tasks_file | length > 0
+  tags:
+    - sof-elk_base
+    - pub2course
