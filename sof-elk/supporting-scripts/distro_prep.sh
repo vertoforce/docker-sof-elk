@@ -1,8 +1,21 @@
 #!/bin/bash
 # SOF-ELK® Supporting script
-# (C)2018 Lewes Technology Consulting, LLC
+# (C)2026 Lewes Technology Consulting, LLC
 #
 # This script is used to prepare the VM for distribution
+# Command line options:
+#   -nodisk: do not shrink disks (useful for testing purposes to save time when
+#            compaction is not needed)
+#   -cloud: Used to prepare cloud instances for cloning/replication - skips steps
+#           not relevant to cloud environments (also forces -nodisk)
+
+functions_include="/usr/local/sof-elk/supporting-scripts/functions.sh"
+if [ -f "${functions_include}" ]; then
+    . "${functions_include}"
+else
+    echo "${functions_include} not present.  Exiting " 1>&2
+    exit 1
+fi
 
 if [[ -n $SSH_CONNECTION ]]; then
     echo "ERROR: This script must be run locally - Exiting."
@@ -10,11 +23,16 @@ if [[ -n $SSH_CONNECTION ]]; then
 fi
 
 DISKSHRINK=1
+CLOUDPREP=0
 # parse any command line arguments
 if [ $# -gt 0 ]; then
     while true; do
         if [ "$1" ]; then
             if [ "$1" == '-nodisk' ]; then
+                DISKSHRINK=0
+            fi
+            if [ "$1" == '-cloud' ]; then
+                CLOUDPREP=1
                 DISKSHRINK=0
             fi
             shift
@@ -31,92 +49,140 @@ if [ -s ~/distro_prep.txt ]; then
     echo "~/distro_prep.txt still contains instructions - Exiting."
     echo
     cat ~/distro_prep.txt
-    exit 2
+    exit 3
 fi
 
-echo "checking that we're on the correct SOF-ELK® branch"
-cd /usr/local/sof-elk/
+echo "Checking that we're on the correct SOF-ELK® branch"
+cd /usr/local/sof-elk/ || exit 4
 git branch
-echo "ACTION REQUIRED!  Is this the correct branch?  (Should be 'public/v*' or 'class/v*', with  all others removed.)"
+echo "ACTION REQUIRED!  Is this the correct branch?  (Should be 'public/v*' or 'class/for123/v*' with  all others removed.)"
 read
 
-curl -s -XGET 'http://localhost:9200/_cat/indices/'|sort
-echo "ACTION REQUIRED!  The data above is still stored in elasticsearch.  Press return if this is correct or Ctrl-C to quit."
+indices=$( curl -s -XGET 'http://localhost:9200/_cat/indices/' | grep -v " \.internal\| \.kibana" | sort )
+if [ ! -z "${indices}" ]; then
+    echo "ACTION REQUIRED!  The data above is still stored in elasticsearch.  Press return if this is correct or Ctrl-C to quit."
+    echo "${indices}"
+    read
+fi
+
+# this will show the volatility/* subdirs - prob need to handle those since they are expected.
+ingest_dir=$( find /logstash/ -mindepth 2 -print )
+if [ ! -z "${ingest_dir}" ]; then
+    echo "The following logs and subdirectories are still present in the ingest directory.  Press return if this is correct or Ctrl-C to quit."
+    echo "${ingest_dir}"
+    read
+fi
+
+echo "The following users are defined in /etc/password.  Press return if this is correct or Ctrl-C to quit."
+awk -F: '$3>=1000 && $3<65000 {print "- "$1}' /etc/passwd
 read
 
-echo "the following logs and subdirectories are still present in the ingest directory.  Press return if this is correct or Ctrl-C to quit."
-find /logstash/ -type f -print
-find /logstash/ -mindepth 2 -type d
-read
+if [ -d ~elk_user/.ssh/ ]; then
+    ssh_dir=$( find ~elk_user/.ssh/ -print )
+    if [ ! -z "${ssh_dir}" ]; then
+        echo "The following contents are in ~elk_user/.ssh/.  Press return if this is correct or Ctrl-C to quit."
+        echo "${ssh_dir}"
+        read
+    fi
+fi
 
 echo "updating local git repo clones"
-cd /usr/local/sof-elk/
-git pull --all
+cd /usr/local/sof-elk/ || exit 4
+SKIP_HOOK=1 git pull --all
 
 echo "removing old kernels"
-package-cleanup -y --oldkernels --count=1
-echo "cleaning yum caches"
-yum clean all --enablerepo=elk-*
-rm -rf /var/cache/yum
+if ! RUNNING_KERNEL=$( uname -r ); then
+    echoerr "ERROR: Could not determine running kernel version"
+    exit 4
+fi
+purgeList=$( apt list --installed | grep -Ei 'linux-image|linux-headers|linux-modules' | grep -v "${RUNNING_KERNEL}" | awk -F/ '{print $1}' )
+if [ -n "${purgeList}" ]; then
+    apt --yes purge ${purgeList}
+fi
 
-echo "cleaning user histories"
-rm -f ~root/.bash_history
-rm -f ~elk_user/.bash_history
+echo "removing unnecessary packages"
+apt --yes autoremove
+
+echo "cleaning apt caches"
+apt-get clean
+
+echo "cleaning user home directories"
+for userclean in root elk_user; do
+    homedir=$( eval echo "~${userclean}" )
+    echo "${userclean} -> ${homedir}"
+    rm -rf ${homedir}/.ansible
+    rm -rf ${homedir}/.bash_history
+    rm -rf ${homedir}/.bundle
+    rm -rf ${homedir}/.cache
+    rm -rf ${homedir}/.config
+    rm -rf ${homedir}/.lesshst
+    rm -rf ${homedir}/.local
+    rm -rf ${homedir}/.python_history
+    rm -rf ${homedir}/.sudo_as_admin_successful
+    rm -rf ${homedir}/.vim
+    rm -rf ${homedir}/.viminfo
+    rm -rf ${homedir}/.vscode-server
+done
+#cat /dev/null > ~/.bash_history; history -c ; history -w; exit
 
 echo "cleaning temp directories"
 rm -rf ~elk_user/tmp/*
 
-echo "updating GeoIP database.  (Leave both of these blank to skip the GeoIP update.)"
-echo -n "Enter GeoIP AccountID: "
-read geoip_accountid
-echo -n "Enter GeoIP LicenseKey: "
-read geoip_licensekey
+echo "Resetting GeoIP databases to distributed versions."
+declare -A md5values
+md5values["ASN"]="c20977100c0a6c0842583ba158e906ec"
+md5values["City"]="4c60b3acf2e6782d48ce2b42979f7b98"
+md5values["Country"]="849e7667913e375bb3873f8778e8fb17"
+for GEOIPDB in ASN City Country; do
+    file=GeoLite2-${GEOIPDB}.mmdb
+    geoip_file_path=/usr/local/share/GeoIP/${file}
+    md5=$( md5sum "${geoip_file_path}" | awk '{print $1}' )
+    if [ "${md5}" != "${md5values[${GEOIPDB}]}" ]; then
+        echo "- ${geoip_file_path}"
+        rm -f "${geoip_file_path}"
+        if ! curl -s -L -o "${geoip_file_path}" https://sof-elk.com/dist/${file}; then
+            echoerr "WARNING: Could not download GeoIP database ${file}"
+        else
+            chmod 644 "${geoip_file_path}"
+        fi
+    fi
+done
+rm -f /etc/GeoIP.conf
+rm -f /etc/cron.d/geoipupdate
 
-if [ -z "${geoip_accountid}" -o -z "${geoip_licensekey}" ]; then
-    echo "
-    AccountID ${geoip_accountid}
-    LicenseKey ${geoip_licensekey}
-    EditionIDs GeoLite2-Country GeoLite2-City GeoLite2-ASN
-    DatabaseDirectory /usr/local/share/GeoIP
-    " > ~/GeoIP.conf
-    geoipupdate -f ~/GeoIP.conf
-    shred -u ~/GeoIP.conf
-fi
+# echo "stopping domain-stats"
+# systemctl stop domain-stats
+# echo "clearing domain-stats data"
+# rm -rf /usr/local/share/domain-stats/[0-9][0-9][0-9]/
+# rm -f /usr/local/share/domain-stats/domain-stats.log
+# rm -rf /usr/local/share/domain-stats/memocache/
+# rm -rf /usr/local/share/domain-stats/__pycache__/
+# echo "reloading top 1m for domain-stats from scratch"
+# domain-stats-utils -i /usr/local/lib/python3.6/site-packages/domain_stats/data/top1m.import -nx /usr/local/share/domain-stats/
 
-echo "stopping elastalert"
-systemctl stop elastalert
-echo "clearing elastalert"
-curl -s -XDELETE 'http://127.0.0.1:9200/elastalert_status' > /dev/null
-curl -s -XDELETE 'http://127.0.0.1:9200/elastalert_status_error' > /dev/null
-curl -s -XDELETE 'http://127.0.0.1:9200/elastalert_status_past' > /dev/null
-curl -s -XDELETE 'http://127.0.0.1:9200/elastalert_status_silence' > /dev/null
-curl -s -XDELETE 'http://127.0.0.1:9200/elastalert_status_status' > /dev/null
-#elastalert-create-index --host 127.0.0.1 --port 9200 --no-ssl --no-auth --url-prefix "" --index "elastalert_status" --old-index "" --config /etc/sysconfig/elastalert_config.yml
+# echo "stopping elastalert"
+# systemctl stop elastalert
+# echo "clearing elastalert"
+# curl -s -XDELETE 'http://127.0.0.1:9200/elastalert_status' > /dev/null
+# curl -s -XDELETE 'http://127.0.0.1:9200/elastalert_status_error' > /dev/null
+# curl -s -XDELETE 'http://127.0.0.1:9200/elastalert_status_past' > /dev/null
+# curl -s -XDELETE 'http://127.0.0.1:9200/elastalert_status_silence' > /dev/null
+# curl -s -XDELETE 'http://127.0.0.1:9200/elastalert_status_status' > /dev/null
+# elastalert-create-index --host 127.0.0.1 --port 9200 --no-ssl --no-auth --url-prefix "" --index "elastalert_status" --old-index "" --config /etc/sysconfig/elastalert_config.yml
 
-echo "removing documents from the elasticsearch .kibana index"
-curl -s -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -X POST 'http://localhost:9200/.kibana/_delete_by_query?conflicts=proceed' -d '{"query": { "match_all": {} } }' > /dev/null
-
-echo "reload kibana dashboards"
+echo "reloading kibana dashboards"
 /usr/local/sbin/load_all_dashboards.sh
 
-echo "stopping logstash"
+echo "stopping kibana"
 systemctl stop kibana
 
 echo "stopping filebeat service"
 systemctl stop filebeat
 echo "clearing filebeat data"
-if [ -f /var/lib/filebeat/registry ]; then
-    echo "filebeat registry is not empty.  The sources below are still tracked.  Press return if this is correct or Ctrl-C to quit."
-    cat /var/lib/filebeat/registry | jq -r '.[].source' | sed -e 's/^/- /'
-    read
-fi
-rm -f /var/lib/filebeat/meta.json
+rm -rf /var/lib/filebeat
 
 echo "removing elasticsearch .tasks index"
 curl -s -XDELETE 'http://localhost:9200/.tasks' > /dev/null
-
-echo "stopping network"
-systemctl stop network
 
 echo "stopping elasticsearch"
 systemctl stop elasticsearch
@@ -124,19 +190,31 @@ systemctl stop elasticsearch
 echo "stopping logstash"
 systemctl stop logstash
 
-echo "clearing MAC address from interface"
-grep -v HWADDR /etc/sysconfig/network-scripts/ifcfg-ens33 > /tmp/tmp_ifcfg_ens
-cat /tmp/tmp_ifcfg_ens > /etc/sysconfig/network-scripts/ifcfg-ens33
-rm /tmp/tmp_ifcfg_ens
-
-echo "stopping syslog"
-systemctl stop rsyslog
-echo "clearing existing log files"
-find /var/log -type f -exec rm -f {} \;
-
 echo "clearing SSH Host Keys"
-systemctl stop sshd
+systemctl stop ssh.socket
 rm -f /etc/ssh/*key*
+
+echo "clearing cron/at content"
+systemctl stop atd
+systemctl stop cron
+if [ -d /var/spool/cron/atjobs/ ]; then
+    rm -rf /var/spool/cron/atjobs/*
+    echo "0" > /var/spool/cron/atjobs/.SEQ
+    chmod 0600 /var/spool/cron/atjobs/.SEQ
+    chown daemon:daemon /var/spool/cron/atjobs/.SEQ
+else
+    echoerr "WARNING: /var/spool/cron/atjobs/ does not exist - could not reinitialize at jobs"
+fi
+
+echo "clearing mail spools"
+rm -f /var/spool/mail/root
+rm -f /var/spool/mail/elk_user
+
+echo "clearing systemd journal and regular log files"
+systemctl stop systemd-journald.service
+systemctl stop systemd-journald.socket
+rm -rf /var/log/journal/*
+find /var/log/ -type f -exec rm -f {} \;
 
 echo "clearing /tmp/"
 rm -rf /tmp/*
@@ -146,20 +224,28 @@ if [ $DISKSHRINK -eq 1 ]; then
     echo "remove any snapshots that already exist and press Return"
     read
 
-    # we don't use swap any more
     echo "zeroize swap:"
     swapoff -a
     for swappart in $( fdisk -l | grep swap | awk '{print $2}' | sed -e 's/:$//' ); do
-        echo "- zeroize $swappart (swap)"
-        dd if=/dev/zero of=$swappart
-        mkswap $swappart
+        echo "- zeroize ${swappart} (swap)"
+        dd if=/dev/zero of="${swappart}"
+        mkswap "${swappart}"
     done
 
     echo "shrink all drives:"
     for shrinkpart in $( vmware-toolbox-cmd disk list ); do
-        vmware-toolbox-cmd disk shrink ${shrinkpart}
+        vmware-toolbox-cmd disk shrink "${shrinkpart}"
     done
 fi
 
-echo "updating /etc/issue* files for boot message"
-cat /etc/issue.prep | sed -e "s/<%REVNO%>/$revdate/" > /etc/issue.stock
+if [ $CLOUDPREP -eq 0 ]; then
+    read -p "Set the pre-login banner version for distribution? (Y/N)" set_distro_version
+    if [ "${set_distro_version}" = "Y" ]; then
+        echo "updating /etc/issue file for boot message"
+        cat /etc/issue.prep | sed -e "s/<%REVNO%>/${revdate}/" > /etc/issue
+    fi
+fi
+
+echo "preparing for new auto-generated machine id and random seed"
+truncate -s 0 /etc/machine-id /var/lib/dbus/machine-id
+rm -f /var/lib/systemd/random-seed

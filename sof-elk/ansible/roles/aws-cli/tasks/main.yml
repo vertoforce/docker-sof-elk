@@ -1,0 +1,52 @@
+---
+# Ansible file supporting the build of a SOF-ELK(R) standalone system
+# (C)2024 Lewes Technology Consulting, LLC
+
+# adapted from https://github.com/xchangebit/ansible-aws-cli
+- name: Install AWS CLI dependencies
+  ansible.builtin.apt:
+    name: '{{ aws_cli_dependencies }}'
+    state: present
+  tags: aws-cli
+
+- name: Check to see if aws binary exists
+  ansible.builtin.stat:
+    path: /usr/local/bin/aws
+  register: aws_binary
+  tags: aws-cli
+
+- name: Download the awscli bundle
+  ansible.builtin.get_url:
+    url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+    dest: /tmp/awscli-bundle.zip
+    force: yes
+  when: not aws_binary.stat.exists
+  register: aws_cli_download_bundle
+  tags: aws-cli
+
+- name: Unarchive the installer
+  ansible.builtin.unarchive:
+    src: /tmp/awscli-bundle.zip
+    dest: /tmp
+    copy: false
+    creates: /tmp/aws
+  when: aws_cli_download_bundle.changed
+  register: aws_cli_unarchive_installer
+  tags: aws-cli
+
+- name: Install awscli package
+  ansible.builtin.shell: /tmp/aws/install
+  args:
+    creates: /usr/bin/aws
+  when: aws_cli_unarchive_installer.changed
+  tags: aws-cli
+
+- name: Remove the installer
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: absent
+  with_items:
+    - /tmp/aws
+    - /tmp/awscli-bundle.zip
+  when: aws_cli_download_bundle.changed or aws_cli_unarchive_installer.changed
+  tags: aws-cli

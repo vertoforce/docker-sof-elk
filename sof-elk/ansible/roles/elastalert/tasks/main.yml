@@ -1,0 +1,55 @@
+---
+# Ansible file supporting the build of a SOF-ELK(R) standalone system
+# (C)2024 Lewes Technology Consulting, LLC
+
+- name: Install Elastalert rpm dependencies
+  yum:
+    name: python3-devel
+    state: present
+  tags: elastalert
+
+- name: Create elastalert user
+  user:
+    name: 'elastalert'
+    system: true
+    state: present
+  tags: elastalert
+
+- name: Upgrade pip
+  pip:
+    name: pip
+    executable: pip3
+    state: latest
+  tags: elastalert
+
+- name: Install Elastalert and pip dependencies
+  pip:
+    name: '{{ elastalert_pip_modules }}'
+    executable: pip3
+    state: present
+  tags: elastalert
+
+- name: Configure Elastalert
+  copy:
+    src: 'elastalert_config.yml'
+    dest: '/etc/sysconfig/elastalert_config.yml'
+    owner: root
+    group: root
+    mode: 0644
+  tags: elastalert
+
+- name: Create Elastalert index
+  command: 'elastalert-create-index --host 127.0.0.1 --port 9200 --no-ssl --no-auth --url-prefix "" --index "elastalert_status" --old-index "" --config /etc/sysconfig/elastalert_config.yml'
+  tags: elastalert
+
+- name: Enable Elastalert service
+  ansible.builtin.systemd_service:
+    name: /usr/local/sof-elk/lib/systemd/elastalert.service
+    enabled: true
+  tags: elastalert
+
+- name: Start Elastalert service
+  ansible.builtin.systemd_service:
+    name: elastalert
+    state: started
+  tags: elastalert

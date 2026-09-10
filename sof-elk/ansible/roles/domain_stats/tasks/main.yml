@@ -1,0 +1,51 @@
+---
+# Ansible file supporting the build of a SOF-ELK(R) standalone system
+# (C)2024 Lewes Technology Consulting, LLC
+
+- name: Install domain-stats pip dependencies
+  pip:
+    name: python-whois
+    executable: pip3
+    state: present
+  tags: domainstats
+
+- name: Install domain-stats
+  pip:
+    name: domain-stats
+    executable: pip3
+    state: present
+  tags: domainstats
+
+- name: Install domain-stats configuration
+  copy:
+    src: '{{ item }}'
+    dest: /usr/local/share/domain-stats/
+    owner: root
+    group: root
+    mode: 0640
+  with_items:
+    - 'domain_stats.yaml'
+    - 'gunicorn_config.py'
+  tags: domainstats
+
+- name: Copy freq table to operational location
+  copy:
+    remote_src: true
+    src: /usr/local/lib/python3.6/site-packages/domain_stats/data/freqtable2018.freq
+    dest: /usr/local/share/domain-stats/
+  tags: domainstats
+
+- name: Install Top 1M records
+  shell: domain-stats-utils -i /usr/local/lib/python3.6/site-packages/domain_stats/data/top1m.import -nx /usr/local/share/domain-stats/
+
+- name: Enable domain-stats service
+  ansible.builtin.systemd_service:
+    name: /usr/local/sof-elk/lib/systemd/domain-stats.service
+    enabled: true
+  tags: domainstats
+
+- name: Start domain-stats service
+  ansible.builtin.systemd_service:
+    name: domain-stats
+    state: started
+  tags: domainstats

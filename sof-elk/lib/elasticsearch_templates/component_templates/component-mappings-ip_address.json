@@ -1,0 +1,20 @@
+{
+  "template": {
+    "mappings": {
+      "dynamic_templates": [
+        {
+          "ip_address_fields": {
+            "match": "ip",
+            "mapping": {
+              "type": "ip"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "_meta": {
+    "description": "IP Address fields",
+    "provider": "SOF-ELK"
+  }
+}

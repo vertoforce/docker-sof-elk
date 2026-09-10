@@ -1,0 +1,47 @@
+{
+  "attributes": {
+    "description": "",
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"query\":{\"language\":\"kuery\",\"query\":\"\"}}"
+    },
+    "optionsJSON": "{\"autoApplyFilters\":true,\"hidePanelBorders\":false,\"hidePanelTitles\":false,\"syncColors\":false,\"syncCursor\":true,\"syncTooltips\":false,\"useMargins\":true}",
+    "panelsJSON": "[{\"embeddableConfig\":{\"description\":\"\",\"hide_title\":true,\"title\":\"SOF-ELK® VM Intro\"},\"gridData\":{\"h\":11,\"i\":\"1\",\"w\":27,\"x\":21,\"y\":0},\"panelIndex\":\"1\",\"type\":\"legacy_vis\"},{\"embeddableConfig\":{\"description\":\"\",\"hide_title\":true,\"title\":\"SOF-ELK®\"},\"gridData\":{\"h\":11,\"i\":\"12\",\"w\":21,\"x\":0,\"y\":0},\"panelIndex\":\"12\",\"type\":\"legacy_vis\"},{\"embeddableConfig\":{\"attributes\":{\"description\":\"\",\"references\":[{\"id\":\"all-records\",\"name\":\"indexpattern-datasource-layer-dc719770-e092-406d-9810-be793631b4ac\",\"type\":\"index-pattern\"}],\"savedObjectId\":\"45a5fedc-2123-4ea6-90fd-7901f8bae75c\",\"state\":{\"adHocDataViews\":{},\"datasourceStates\":{\"formBased\":{\"currentIndexPatternId\":\"all-records\",\"layers\":{\"dc719770-e092-406d-9810-be793631b4ac\":{\"columnOrder\":[\"43fe586c-e955-4fef-b55a-76677e05cab8\"],\"columns\":{\"43fe586c-e955-4fef-b55a-76677e05cab8\":{\"customLabel\":true,\"dataType\":\"number\",\"isBucketed\":false,\"label\":\"Total Records\",\"operationType\":\"count\",\"params\":{\"emptyAsNull\":true,\"format\":{\"id\":\"number\",\"params\":{\"compact\":false,\"decimals\":0,\"suffix\":\"\"}}},\"scale\":\"ratio\",\"sourceField\":\"___records___\"}},\"ignoreGlobalFilters\":false,\"incompleteColumns\":{},\"indexPatternId\":\"all-records\",\"sampling\":1}}},\"indexpattern\":{\"currentIndexPatternId\":\"all-records\",\"layers\":{}},\"textBased\":{\"indexPatternRefs\":[{\"id\":\"all-records\",\"timeField\":\"@timestamp\",\"title\":\"logstash-*,netflow-*,httpdlog-*\"}],\"layers\":{}}},\"filters\":[],\"internalReferences\":[],\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"visualization\":{\"layerId\":\"dc719770-e092-406d-9810-be793631b4ac\",\"layerType\":\"data\",\"metricAccessor\":\"43fe586c-e955-4fef-b55a-76677e05cab8\"}},\"title\":\"Total Records\",\"version\":2,\"visualizationType\":\"lnsMetric\"},\"description\":\"\",\"hide_title\":true,\"title\":\"Total Records\"},\"gridData\":{\"h\":5,\"i\":\"820978c4-14cd-4fdc-88c4-01d282b6e445\",\"w\":14,\"x\":0,\"y\":11},\"panelIndex\":\"820978c4-14cd-4fdc-88c4-01d282b6e445\",\"type\":\"vis\"},{\"embeddableConfig\":{\"description\":\"\",\"hide_title\":false,\"title\":\"Index Summary\"},\"gridData\":{\"h\":19,\"i\":\"0fa97373-425e-40fc-b8c4-92a932eca4ee\",\"w\":14,\"x\":0,\"y\":16},\"panelIndex\":\"0fa97373-425e-40fc-b8c4-92a932eca4ee\",\"type\":\"vis\"},{\"embeddableConfig\":{\"description\":\"\",\"title\":\"Record Summary - All Indices\"},\"gridData\":{\"h\":24,\"i\":\"0995f991-482f-4c7e-a903-a8b5feed135f\",\"w\":34,\"x\":14,\"y\":11},\"panelIndex\":\"0995f991-482f-4c7e-a903-a8b5feed135f\",\"type\":\"vis\"}]",
+    "timeRestore": false,
+    "title": "SOF-ELK® VM Introduction Dashboard"
+  },
+  "coreMigrationVersion": "8.8.0",
+  "id": "6d272a20-7319-11e8-9f32-cf7527ac183d",
+  "managed": false,
+  "namespaces": [
+    "default"
+  ],
+  "references": [
+    {
+      "id": "98309f20-8873-11e8-b4c2-17db52b8990d",
+      "name": "12:savedObjectRef",
+      "type": "visualization"
+    },
+    {
+      "id": "all-records",
+      "name": "820978c4-14cd-4fdc-88c4-01d282b6e445:indexpattern-datasource-layer-dc719770-e092-406d-9810-be793631b4ac",
+      "type": "index-pattern"
+    },
+    {
+      "id": "bdecdc70-731e-11e8-9f32-cf7527ac183d",
+      "name": "1:savedObjectRef",
+      "type": "visualization"
+    },
+    {
+      "id": "c59132eb-c58f-4a91-b394-f62b7ec92b40",
+      "name": "0fa97373-425e-40fc-b8c4-92a932eca4ee:savedObjectRef",
+      "type": "lens"
+    },
+    {
+      "id": "dc934d6c-c235-4e41-a73e-0325e2f169f0",
+      "name": "0995f991-482f-4c7e-a903-a8b5feed135f:savedObjectRef",
+      "type": "lens"
+    }
+  ],
+  "type": "dashboard",
+  "typeMigrationVersion": "10.3.0"
+}
