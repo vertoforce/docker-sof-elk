@@ -1,0 +1,58 @@
+{
+  "index_patterns": [
+    "httpdlog-*"
+  ],
+  "composed_of": [
+    "settings-common",
+    "mappings-corecommon",
+    "mappings-string",
+    "mappings-ip_address",
+    "mappings-geohash",
+    "mappings-port",
+    "mappings-zeekuid",
+    "mappings-final"
+  ],
+  "template": {
+    "mappings": {
+      "properties": {
+        "http": {
+          "properties": {
+            "request": {
+              "properties": {
+                "method": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "response": {
+              "properties": {
+                "status_code": {
+                  "type": "short",
+                  "ignore_malformed": false,
+                  "coerce": true
+                }
+              }
+            },
+            "version": {
+              "type": "keyword"
+            }
+          }
+        },
+        "client": {
+          "properties": {
+            "user": {
+              "properties": {
+                "name": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "_meta": {
+    "provider": "SOF-ELK"
+  }
+}

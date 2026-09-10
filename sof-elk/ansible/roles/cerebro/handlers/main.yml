@@ -1,0 +1,13 @@
+---
+# Ansible file supporting the build of a SOF-ELK(R) standalone system
+# (C)2024 Lewes Technology Consulting, LLC
+
+- name: restart cerebro
+  ansible.builtin.systemd_service:
+    name: cerebro
+    state: restarted
+
+- name: reload firewalld
+  ansible.builtin.systemd_service:
+    name: firewalld
+    state: reloaded

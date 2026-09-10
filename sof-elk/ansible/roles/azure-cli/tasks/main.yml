@@ -1,0 +1,29 @@
+---
+# Ansible file supporting the build of a SOF-ELK(R) standalone system
+# (C)2024 Lewes Technology Consulting, LLC
+
+- name: Install Azure CLI dependencies
+  ansible.builtin.apt:
+    name: '{{ azure_cli_dependencies }}'
+    state: present
+  tags: azure-cli
+
+- name: Install Microsoft Azure source definition file
+  ansible.builtin.template:
+    src: azure-cli.sources.j2
+    dest: /etc/apt/sources.list.d/azure-cli.sources
+    mode: 0644
+  register: azure_source
+  tags: azure-cli
+
+- name: Update apt sources
+  ansible.builtin.apt:
+    update_cache: yes
+  when: azure_source.changed
+  tags: azure-cli
+
+- name: Install Azure packages
+  ansible.builtin.apt:
+    name: azure-cli
+    state: present
+  tags: azure-cli

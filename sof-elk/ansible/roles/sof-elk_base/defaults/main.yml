@@ -1,0 +1,62 @@
+---
+# Ansible file supporting the build of a SOF-ELK(R) standalone system
+# (C)2025 Lewes Technology Consulting, LLC
+
+base_apt_packages:
+  - at
+  - bc
+  - bind9-dnsutils
+  - btop
+  - bzip2
+  - chrony
+  - cifs-utils
+  - console-data
+  - cron
+  - curl
+  - eject
+  - exfat-fuse
+  - file
+  - firewalld
+  - gcc
+  - geoip-bin
+  - geoipupdate
+  - git
+  - gpg
+  - htop
+  - jq
+  - locate
+  - logrotate
+  - lsof
+  - net-tools
+  - nfdump
+  - p7zip
+  - psmisc
+  - python3-dev
+  - python3-elasticsearch
+  - python3-pip
+  - rsync
+  - screen
+  - tcpdump
+  - tree
+  - unzip
+  - vim
+  - virt-what
+  - whois
+
+vmware_apt_packages:
+  - open-vm-tools
+
+revision_string: "<%REVNO%>"
+
+arch_common_name:
+  aarch64: "arm64"
+  x86_64: "x64"
+
+course_list:
+  - { id: "FOR572", name: "Advanced Network Forensics and Analysis", brand: "SANS", order: 1 }
+  - { id: "FOR509", name: "Cloud Forensics and Incident response", brand: "SANS", order: 2 }
+  - { id: "FOR589", name: "Cybercrime Investigations", brand: "SANS", order: 3 }
+  - { id: "FOR668", name: "Threat Hunting and Data Analysis", brand: "SANS", order: 4 }
+  - { id: "FOR669", name: "Model-Assisted Threat Hunting", brand: "SANS", order: 5 }
+  - { id: "Aviata", name: "Cloud Solo Flight Challenge", brand: "SANS", order: 100 }
+  - { id: "", name: "Attacking and Defending Azure & M365", brand: "XINTRA", order: 200, publicvmonly: true }

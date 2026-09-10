@@ -1,0 +1,69 @@
+{
+  "attributes": {
+    "columns": [
+      "file.directory",
+      "file.name",
+      "file.size"
+    ],
+    "description": "",
+    "grid": {},
+    "hideChart": false,
+    "hits": 0,
+    "isTextBasedQuery": false,
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"filter\":[],\"highlightAll\":true,\"indexRefName\":\"kibanaSavedObjectMeta.searchSourceJSON.index\",\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"version\":true}"
+    },
+    "sort": [
+      [
+        "@timestamp",
+        "desc"
+      ]
+    ],
+    "tabs": [
+      {
+        "attributes": {
+          "columns": [
+            "file.directory",
+            "file.name",
+            "file.size"
+          ],
+          "grid": {},
+          "hideChart": false,
+          "hits": 0,
+          "isTextBasedQuery": false,
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"filter\":[],\"highlightAll\":true,\"indexRefName\":\"kibanaSavedObjectMeta.searchSourceJSON.index\",\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"version\":true}"
+          },
+          "sort": [
+            [
+              "@timestamp",
+              "desc"
+            ]
+          ],
+          "timeRestore": false,
+          "version": 1
+        },
+        "id": "9f70a79b-de9d-43ab-8c0b-caa032c04ee3",
+        "label": "Untitled"
+      }
+    ],
+    "timeRestore": false,
+    "title": "Filesystem Discovery",
+    "version": 1
+  },
+  "coreMigrationVersion": "8.8.0",
+  "id": "80bd16f0-51bf-11e9-8b54-fde301eff14e",
+  "managed": false,
+  "namespaces": [
+    "default"
+  ],
+  "references": [
+    {
+      "id": "filesystem",
+      "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
+      "type": "index-pattern"
+    }
+  ],
+  "type": "search",
+  "typeMigrationVersion": "10.12.0"
+}

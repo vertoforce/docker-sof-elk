@@ -1,0 +1,9 @@
+---
+# Ansible file supporting the build of a SOF-ELK(R) standalone system
+# (C)2025 Lewes Technology Consulting, LLC
+
+- name: Install Google Cloud packages
+  ansible.builtin.apt:
+    name: google-cloud-cli
+    state: present
+  tags: gcp-cli

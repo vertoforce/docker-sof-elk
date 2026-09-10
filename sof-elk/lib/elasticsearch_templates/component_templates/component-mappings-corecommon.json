@@ -1,0 +1,84 @@
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "@version": {
+          "type": "keyword"
+        },
+        "prospector": {
+          "properties": {
+            "type": {
+              "type": "keyword"
+            }
+          },
+          "type": "object"
+        },
+        "network": {
+          "properties": {
+            "transport": {
+              "type": "keyword"
+            },
+            "community_id": {
+              "type": "keyword"
+            },
+            "tcp_flags": {
+              "type": "keyword"
+            },
+            "tcp_flags_hex": {
+              "type": "keyword"
+            }
+          }
+        },
+        "original_message": {
+          "type": "keyword"
+        },
+        "path": {
+          "type": "keyword"
+        },
+        "log": {
+          "type": "object",
+          "properties": {
+            "file": {
+              "properties": {
+                "inode": {
+                  "type": "unsigned_long"
+                },
+                "device_id": {
+                  "type": "unsigned_long"
+                }
+              }
+            }
+          }
+        },
+        "sof-elk": {
+          "type": "object",
+          "properties": {
+            "base_index": {
+              "type": "keyword"
+            },
+            "path": {
+              "type": "keyword"
+            }
+          }
+        }
+      },
+      "dynamic_templates": [
+        {
+          "rawvalue_fields": {
+            "match": "_rawvalue",
+            "mapping": {
+              "type": "text"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "_meta": {
+    "description": "Core/common fields",
+    "provider": "SOF-ELK"
+  }
+}

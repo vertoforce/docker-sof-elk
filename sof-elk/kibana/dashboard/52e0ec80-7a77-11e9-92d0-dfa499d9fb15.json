@@ -1,0 +1,42 @@
+{
+  "attributes": {
+    "description": "",
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"query\":{\"language\":\"kuery\",\"query\":\"\"}}"
+    },
+    "optionsJSON": "{\"autoApplyFilters\":true,\"hidePanelBorders\":false,\"hidePanelTitles\":false,\"syncColors\":false,\"syncCursor\":true,\"syncTooltips\":false,\"useMargins\":true}",
+    "panelsJSON": "[{\"embeddableConfig\":{\"description\":\"\",\"title\":\"LNKfile Discovery\"},\"gridData\":{\"h\":38,\"i\":\"1\",\"w\":48,\"x\":0,\"y\":10},\"panelIndex\":\"1\",\"type\":\"discover_session\"},{\"embeddableConfig\":{},\"gridData\":{\"h\":10,\"i\":\"3def4406-ce68-4c7f-9b11-a1e0e2f6e09a\",\"w\":16,\"x\":0,\"y\":0},\"panelIndex\":\"3def4406-ce68-4c7f-9b11-a1e0e2f6e09a\",\"type\":\"vis\"},{\"embeddableConfig\":{},\"gridData\":{\"h\":10,\"i\":\"bd4d4e00-246f-4b26-9b22-6223ebfb18e3\",\"w\":16,\"x\":32,\"y\":0},\"panelIndex\":\"bd4d4e00-246f-4b26-9b22-6223ebfb18e3\",\"type\":\"vis\"},{\"embeddableConfig\":{},\"gridData\":{\"h\":10,\"i\":\"b635094e-7084-46b3-9e1a-228686b59ca9\",\"w\":16,\"x\":16,\"y\":0},\"panelIndex\":\"b635094e-7084-46b3-9e1a-228686b59ca9\",\"type\":\"vis\"}]",
+    "timeRestore": false,
+    "title": "LNK File Dashboard"
+  },
+  "coreMigrationVersion": "8.8.0",
+  "id": "52e0ec80-7a77-11e9-92d0-dfa499d9fb15",
+  "managed": false,
+  "namespaces": [
+    "default"
+  ],
+  "references": [
+    {
+      "id": "13b187af-33b2-48c5-bf0b-9a73926a9e32",
+      "name": "bd4d4e00-246f-4b26-9b22-6223ebfb18e3:savedObjectRef",
+      "type": "lens"
+    },
+    {
+      "id": "2cc7b8a8-248b-44d5-9840-1d3558eec280",
+      "name": "3def4406-ce68-4c7f-9b11-a1e0e2f6e09a:savedObjectRef",
+      "type": "lens"
+    },
+    {
+      "id": "59f54d4e-c7c3-4f50-94a1-9539dbce8f60",
+      "name": "b635094e-7084-46b3-9e1a-228686b59ca9:savedObjectRef",
+      "type": "lens"
+    },
+    {
+      "id": "8d421a80-7a76-11e9-92d0-dfa499d9fb15",
+      "name": "1:savedObjectRef",
+      "type": "search"
+    }
+  ],
+  "type": "dashboard",
+  "typeMigrationVersion": "10.3.0"
+}

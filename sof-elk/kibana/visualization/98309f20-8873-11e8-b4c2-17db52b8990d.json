@@ -1,0 +1,21 @@
+{
+  "attributes": {
+    "description": "",
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"filter\":[],\"query\":{\"language\":\"kuery\",\"query\":\"\"}}"
+    },
+    "title": "SOF-ELK®",
+    "uiStateJSON": "{}",
+    "version": 1,
+    "visState": "{\"aggs\":[],\"params\":{\"fontSize\":12,\"markdown\":\"![SOF-ELK Logo](/ui/sof-elk.svg)\",\"openLinksInNewTab\":false},\"title\":\"SOF-ELK®\",\"type\":\"markdown\"}"
+  },
+  "coreMigrationVersion": "8.8.0",
+  "id": "98309f20-8873-11e8-b4c2-17db52b8990d",
+  "managed": false,
+  "namespaces": [
+    "default"
+  ],
+  "references": [],
+  "type": "visualization",
+  "typeMigrationVersion": "8.5.0"
+}

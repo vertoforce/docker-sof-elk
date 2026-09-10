@@ -4,4 +4,13 @@
 ## `http.host` / `http.port` were renamed to `api.http.host` / `api.http.port`
 ## in Logstash 8.x (the old keys still work but are deprecated).
 api.http.host: "0.0.0.0"
-path.config: /usr/local/sof-elk/configfiles
+
+## Upstream sets this in sof-elk/ansible/roles/logstash/files/logstash.yml. The
+## vendored configfiles read and write ECS field names ([host][hostname],
+## [log][syslog][*], [source][ip]), so it has to match.
+pipeline.ecs_compatibility: v8
+
+## No `path.config` here on purpose. The image ships config/pipelines.yml
+## pointing the main pipeline at /usr/share/logstash/pipeline, and that file wins
+## over path.config. docker/logstash/entrypoint.sh fills that directory with
+## symlinks to sof-elk/configfiles plus the docker overrides.
